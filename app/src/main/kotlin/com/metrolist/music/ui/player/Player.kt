@@ -236,7 +236,7 @@ fun BottomSheetPlayer(
 
     val playerBackground by rememberEnumPreference(
         key = PlayerBackgroundStyleKey,
-        defaultValue = PlayerBackgroundStyle.DEFAULT,
+        defaultValue = PlayerBackgroundStyle.GRADIENT,
     )
     val playerButtonsStyle by rememberEnumPreference(
         key = PlayerButtonsStyleKey,
@@ -1003,12 +1003,11 @@ fun BottomSheetPlayer(
                             text = title,
                             style = MaterialTheme.typography.titleLarge,
                             fontWeight = FontWeight.Bold,
-                            maxLines = 1,
+                            maxLines = 2,
                             overflow = TextOverflow.Ellipsis,
                             color = TextBackgroundColor,
                             modifier =
                                 Modifier
-                                    .basicMarquee(iterations = 1, initialDelayMillis = 3000, velocity = 30.dp)
                                     .combinedClickable(
                                         enabled = true,
                                         indication = null,
@@ -1057,7 +1056,6 @@ fun BottomSheetPlayer(
                                 modifier =
                                     Modifier
                                         .fillMaxWidth()
-                                        .basicMarquee(iterations = 1, initialDelayMillis = 3000, velocity = 30.dp)
                                         .padding(end = 12.dp),
                             ) {
                                 var layoutResult by remember { mutableStateOf<TextLayoutResult?>(null) }
@@ -1065,7 +1063,7 @@ fun BottomSheetPlayer(
                                 Text(
                                     text = annotatedString,
                                     style = MaterialTheme.typography.titleMedium.copy(color = TextBackgroundColor),
-                                    maxLines = 1,
+                                    maxLines = 2,
                                     overflow = TextOverflow.Ellipsis,
                                     onTextLayout = { layoutResult = it },
                                     modifier =
@@ -1544,11 +1542,11 @@ fun BottomSheetPlayer(
                             val playPauseWeight by animateFloatAsState(
                                 targetValue =
                                     if (isPlayPausePressed) {
-                                        1.9f
+                                        0.68f
                                     } else if (isBackPressed || isNextPressed) {
-                                        1.1f
+                                        0.52f
                                     } else {
-                                        1.3f
+                                        0.6f
                                     },
                                 animationSpec =
                                     spring(
@@ -1561,9 +1559,9 @@ fun BottomSheetPlayer(
                             val backButtonWeight by animateFloatAsState(
                                 targetValue =
                                     if (isBackPressed) {
-                                        0.65f
+                                        0.52f
                                     } else if (isPlayPausePressed) {
-                                        0.35f
+                                        0.4f
                                     } else {
                                         0.45f
                                     },
@@ -1578,9 +1576,9 @@ fun BottomSheetPlayer(
                             val nextButtonWeight by animateFloatAsState(
                                 targetValue =
                                     if (isNextPressed) {
-                                        0.65f
+                                        0.52f
                                     } else if (isPlayPausePressed) {
-                                        0.35f
+                                        0.4f
                                     } else {
                                         0.45f
                                     },
@@ -1591,6 +1589,25 @@ fun BottomSheetPlayer(
                                     ),
                                 label = "nextButtonWeight",
                             )
+
+                            val shuffleModeEnabled by playerConnection.shuffleModeEnabled.collectAsStateWithLifecycle()
+                            Box(
+                                contentAlignment = Alignment.Center,
+                                modifier = Modifier.weight(0.22f),
+                            ) {
+                                ResizableIconButton(
+                                    icon = R.drawable.shuffle,
+                                    color = TextBackgroundColor,
+                                    enabled = !isListenTogetherGuest,
+                                    modifier =
+                                        Modifier
+                                            .size(28.dp)
+                                            .alpha(if (shuffleModeEnabled) 1f else 0.5f),
+                                    onClick = {
+                                        playerConnection.player.shuffleModeEnabled = !shuffleModeEnabled
+                                    },
+                                )
+                            }
 
                             FilledIconButton(
                                 onClick = playerConnection::seekToPrevious,
@@ -1669,16 +1686,6 @@ fun BottomSheetPlayer(
                                             },
                                         modifier = Modifier.size(32.dp),
                                     )
-                                    Spacer(modifier = Modifier.width(8.dp))
-                                    Text(
-                                        text =
-                                            if (isListenTogetherGuest) {
-                                                if (isMuted) stringResource(R.string.unmute) else stringResource(R.string.mute)
-                                            } else {
-                                                if (effectiveIsPlaying) stringResource(R.string.player_pause) else stringResource(R.string.play)
-                                            },
-                                        style = MaterialTheme.typography.titleMedium,
-                                    )
                                 }
                             }
 
@@ -1703,6 +1710,28 @@ fun BottomSheetPlayer(
                                     painter = painterResource(R.drawable.skip_next),
                                     contentDescription = null,
                                     modifier = Modifier.size(32.dp),
+                                )
+                            }
+
+                            Box(
+                                contentAlignment = Alignment.Center,
+                                modifier = Modifier.weight(0.22f),
+                            ) {
+                                ResizableIconButton(
+                                    icon =
+                                        when (repeatMode) {
+                                            Player.REPEAT_MODE_ONE -> R.drawable.repeat_one
+                                            else -> R.drawable.repeat
+                                        },
+                                    color = TextBackgroundColor,
+                                    enabled = !isListenTogetherGuest,
+                                    modifier =
+                                        Modifier
+                                            .size(28.dp)
+                                            .alpha(if (repeatMode == Player.REPEAT_MODE_OFF) 0.5f else 1f),
+                                    onClick = {
+                                        playerConnection.player.toggleRepeatMode()
+                                    },
                                 )
                             }
                         }

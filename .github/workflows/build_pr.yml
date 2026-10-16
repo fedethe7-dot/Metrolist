@@ -19,6 +19,8 @@ concurrency:
 
 jobs:
   build:
+    # Sul fork personale questi job non partono (usano server di Metrolist).
+    if: github.repository_owner == 'MetrolistGroup'
     runs-on: blacksmith-4vcpu-ubuntu-2404
     timeout-minutes: 20
 

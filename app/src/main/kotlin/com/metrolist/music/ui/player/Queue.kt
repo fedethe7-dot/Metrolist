@@ -92,6 +92,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -266,7 +267,7 @@ fun Queue(
             if (useNewPlayerDesign) {
                 // New design
                 Row(
-                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
                     verticalAlignment = Alignment.CenterVertically,
                     modifier =
                         Modifier
@@ -296,92 +297,27 @@ fun Queue(
                             bottomEnd = 50.dp,
                         )
 
-                    PlayerQueueButton(
-                        icon = R.drawable.queue_music,
-                        onClick = { state.expandSoft() },
-                        isActive = false,
-                        shape = queueShape,
-                        modifier = Modifier.size(buttonSize),
-                        textButtonColor = textButtonColor,
-                        iconButtonColor = iconButtonColor,
-                        iconSize = iconSize,
-                        textBackgroundColor = TextBackgroundColor,
-                        playerBackground = playerBackground,
-                    )
-
-                    PlayerQueueButton(
-                        icon = R.drawable.bedtime,
-                        onClick = {
-                            if (sleepTimerEnabled) {
-                                playerConnection.service.sleepTimer?.clear()
-                            } else {
-                                showSleepTimerDialog = true
-                            }
-                        },
-                        isActive = sleepTimerEnabled,
-                        enabled = !isListenTogetherGuest,
-                        shape = middleShape,
-                        modifier = Modifier.size(buttonSize),
-                        textButtonColor = textButtonColor,
-                        iconButtonColor = iconButtonColor,
-                        text = if (sleepTimerEnabled) makeTimeString(sleepTimerTimeLeft) else null,
-                        iconSize = iconSize,
-                        textBackgroundColor = TextBackgroundColor,
-                        playerBackground = playerBackground,
-                    )
-
-                    val shuffleModeEnabled by playerConnection.shuffleModeEnabled.collectAsStateWithLifecycle()
-                    PlayerQueueButton(
-                        icon = R.drawable.shuffle,
-                        onClick = {
-                            playerConnection.player.shuffleModeEnabled = !shuffleModeEnabled
-                        },
-                        isActive = shuffleModeEnabled,
-                        enabled = !isListenTogetherGuest,
-                        shape = middleShape,
-                        modifier = Modifier.size(buttonSize),
-                        textButtonColor = textButtonColor,
-                        iconButtonColor = iconButtonColor,
-                        iconSize = iconSize,
-                        textBackgroundColor = TextBackgroundColor,
-                        playerBackground = playerBackground,
-                    )
-
-                    PlayerQueueButton(
+                    PlayerLabeledButton(
                         icon = R.drawable.lyrics,
+                        text = stringResource(R.string.beat_lyrics_short),
                         onClick = { onToggleLyrics() },
                         isActive = showInlineLyrics,
-                        shape = middleShape,
-                        modifier = Modifier.size(buttonSize),
                         textButtonColor = textButtonColor,
                         iconButtonColor = iconButtonColor,
-                        iconSize = iconSize,
                         textBackgroundColor = TextBackgroundColor,
-                        playerBackground = playerBackground,
+                        modifier = Modifier.weight(1f),
                     )
 
-                    PlayerQueueButton(
-                        icon =
-                            when (repeatMode) {
-                                Player.REPEAT_MODE_ALL -> R.drawable.repeat
-                                Player.REPEAT_MODE_ONE -> R.drawable.repeat_one
-                                else -> R.drawable.repeat
-                            },
-                        onClick = {
-                            playerConnection.player.toggleRepeatMode()
-                        },
-                        isActive = repeatMode != Player.REPEAT_MODE_OFF,
-                        enabled = !isListenTogetherGuest,
-                        shape = repeatShape,
-                        modifier = Modifier.size(buttonSize),
+                    PlayerLabeledButton(
+                        icon = R.drawable.queue_music,
+                        text = stringResource(R.string.queue),
+                        onClick = { state.expandSoft() },
+                        isActive = false,
                         textButtonColor = textButtonColor,
                         iconButtonColor = iconButtonColor,
-                        iconSize = iconSize,
                         textBackgroundColor = TextBackgroundColor,
-                        playerBackground = playerBackground,
+                        modifier = Modifier.weight(1f),
                     )
-
-                    Spacer(modifier = Modifier.weight(1f))
 
                     Box(
                         modifier =
@@ -1344,5 +1280,45 @@ private fun PlayerQueueButton(
                 tint = finalTint,
             )
         }
+    }
+}
+
+@Composable
+private fun PlayerLabeledButton(
+    icon: Int,
+    text: String,
+    onClick: () -> Unit,
+    isActive: Boolean,
+    textButtonColor: Color,
+    iconButtonColor: Color,
+    textBackgroundColor: Color,
+    modifier: Modifier = Modifier,
+) {
+    val content = if (isActive) iconButtonColor else textBackgroundColor
+    Row(
+        horizontalArrangement = Arrangement.Center,
+        verticalAlignment = Alignment.CenterVertically,
+        modifier =
+            modifier
+                .height(48.dp)
+                .clip(RoundedCornerShape(18.dp))
+                .background(if (isActive) textButtonColor else textBackgroundColor.copy(alpha = 0.12f))
+                .clickable(onClick = onClick)
+                .padding(horizontal = 12.dp),
+    ) {
+        Icon(
+            painter = painterResource(id = icon),
+            contentDescription = null,
+            modifier = Modifier.size(20.dp),
+            tint = content,
+        )
+        Spacer(modifier = Modifier.width(8.dp))
+        Text(
+            text = text,
+            color = content,
+            fontWeight = FontWeight.SemiBold,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
     }
 }

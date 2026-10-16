@@ -1,0 +1,137 @@
+name: And the beat goes on
+
+# Compila l'app personale "And the beat goes on" su un server gratuito di GitHub
+# e la pubblica nella Release "beat-ultima", pronta da scaricare sul telefono.
+on:
+  workflow_dispatch:
+  push:
+    branches: ["main"]
+    paths-ignore:
+      - "**.md"
+      - "fastlane/**"
+      - "assets/**"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: beat-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  BEAT_APPLICATION_ID: com.beatgoeson.music
+  BEAT_APP_NAME: And the beat goes on
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v6
+        with:
+          java-version: "21"
+          distribution: "temurin"
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v5
+
+      - name: Grant execute permission for gradlew
+        run: chmod +x gradlew
+
+      # La firma deve restare sempre la stessa, altrimenti Android non installa
+      # gli aggiornamenti sopra la versione precedente. Se esiste il segreto
+      # BEAT_KEYSTORE_B64 si usa quello; altrimenti la chiave viene creata una volta
+      # e conservata nella cache di GitHub.
+      - name: Restore signing key from secret
+        env:
+          BEAT_KEYSTORE_B64: ${{ secrets.BEAT_KEYSTORE_B64 }}
+        run: |
+          if [ -n "$BEAT_KEYSTORE_B64" ]; then
+            echo "$BEAT_KEYSTORE_B64" | base64 -d > beat.keystore
+            echo "Chiave di firma: segreto BEAT_KEYSTORE_B64"
+          fi
+
+      - name: Restore signing key from cache
+        id: beat_keystore
+        if: hashFiles('beat.keystore') == ''
+        uses: actions/cache/restore@v6
+        with:
+          path: beat.keystore
+          key: beat-keystore-v1
+
+      - name: Create signing key
+        if: hashFiles('beat.keystore') == ''
+        run: |
+          keytool -genkeypair -v -keystore beat.keystore -storepass android -alias beat -keypass android \
+            -keyalg RSA -keysize 2048 -validity 20000 -dname "CN=And the beat goes on,O=Personale,C=IT"
+          echo "BEAT_NEW_KEY=1" >> "$GITHUB_ENV"
+
+      - name: Save signing key to cache
+        if: env.BEAT_NEW_KEY == '1'
+        uses: actions/cache/save@v6
+        with:
+          path: beat.keystore
+          key: beat-keystore-v1
+
+      - name: Build APK
+        id: build
+        run: |
+          set -o pipefail
+          ./gradlew --console=plain assembleFossRelease --warning-mode summary 2>&1 | tee build.log
+        env:
+          METROLIST_APPLICATION_ID: ${{ env.BEAT_APPLICATION_ID }}
+          METROLIST_APP_NAME: ${{ env.BEAT_APP_NAME }}
+          METROLIST_BUILD_COMMIT: ${{ github.sha }}
+          PULL_REQUEST: "false"
+          GITHUB_EVENT_NAME: ${{ github.event_name }}
+
+      - name: Sign APK
+        id: sign
+        run: |
+          set -e
+          UNSIGNED=$(find app/build/outputs/apk/foss/release -name "*.apk" | grep -i universal | head -n1)
+          [ -z "$UNSIGNED" ] && UNSIGNED=$(find app/build/outputs/apk/foss/release -name "*.apk" | head -n1)
+          echo "APK di partenza: $UNSIGNED"
+          BT=$(ls -d "$ANDROID_HOME"/build-tools/* | sort -V | tail -n1)
+          "$BT/zipalign" -f -p 4 "$UNSIGNED" aligned.apk
+          "$BT/apksigner" sign --ks beat.keystore --ks-pass pass:android --key-pass pass:android \
+            --ks-key-alias beat --out And-the-beat-goes-on.apk aligned.apk
+          "$BT/apksigner" verify And-the-beat-goes-on.apk
+          ls -la And-the-beat-goes-on.apk
+
+      - name: Publish release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release delete beat-ultima --yes --cleanup-tag || true
+          gh release create beat-ultima And-the-beat-goes-on.apk \
+            --target "$GITHUB_SHA" \
+            --title "And the beat goes on · ultima versione" \
+            --notes "Compilata il $(TZ=Europe/Rome date '+%d/%m/%Y alle %H:%M') dalla modifica ${GITHUB_SHA::7}. Scarica And-the-beat-goes-on.apk dal telefono e installala."
+
+      # Riepilogo leggibile anche senza accesso ai log: finisce nel ramo beat-build-log.
+      - name: Save build report
+        if: always()
+        run: |
+          mkdir -p report
+          {
+            echo "commit: $GITHUB_SHA"
+            echo "data: $(TZ=Europe/Rome date '+%Y-%m-%d %H:%M')"
+            echo "build: ${{ steps.build.outcome }}"
+            echo "firma: ${{ steps.sign.outcome }}"
+          } > report/status.txt
+          if [ -f build.log ]; then
+            grep -nE "^e: |error:|FAILURE|What went wrong|BUILD (SUCCESSFUL|FAILED)" build.log | head -n 200 > report/errors.txt || true
+            tail -n 300 build.log > report/build-tail.log
+          fi
+          cd report
+          git init -q -b beat-build-log
+          git config user.name "github-actions"
+          git config user.email "github-actions@users.noreply.github.com"
+          git add -A
+          git commit -q -m "Build report ${GITHUB_SHA::7}"
+          git push -f "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git" beat-build-log

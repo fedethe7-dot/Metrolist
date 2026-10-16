@@ -183,7 +183,7 @@ private fun NewMiniPlayer(
     // Theme settings - these rarely change
     val miniPlayerBackground by rememberEnumPreference(
         MiniPlayerBackgroundStyleKey,
-        defaultValue = MiniPlayerBackgroundStyle.DEFAULT,
+        defaultValue = MiniPlayerBackgroundStyle.GRADIENT,
     )
     val context = LocalContext.current
     var gradientColors by remember { mutableStateOf<List<Color>>(emptyList()) }
