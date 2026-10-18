@@ -25,7 +25,10 @@ import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.add
 import androidx.compose.foundation.layout.only
+import androidx.compose.foundation.layout.statusBars
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.systemBars
@@ -112,6 +115,7 @@ import com.metrolist.music.LocalListenTogetherManager
 import com.metrolist.music.LocalPlayerAwareWindowInsets
 import com.metrolist.music.LocalPlayerConnection
 import com.metrolist.music.R
+import com.metrolist.music.constants.AppBarHeight
 import com.metrolist.music.constants.AutoRadioQueueKey
 import com.metrolist.music.constants.GridItemSize
 import com.metrolist.music.constants.GridItemsSizeKey
@@ -648,6 +652,7 @@ fun DailyDiscoverCard(
 fun HomeScreen(
     snackbarHostState: SnackbarHostState,
     viewModel: HomeViewModel = hiltViewModel(),
+    suggestionsOnly: Boolean = false,
 ) {
     val navController = LocalNavController.current
     val menuState = LocalMenuState.current
@@ -1043,29 +1048,39 @@ fun HomeScreen(
             val list = mutableListOf<HomeSection>()
             val chipActive = selectedChip != null
 
-            // And the beat goes on: no speed dial or community playlists, and a fixed order
-            // that keeps liked music, quick picks and personal mixes at the top.
-            if (!chipActive && quickPicks?.isNotEmpty() == true) list.add(HomeSection.QuickPicks)
-            if (!chipActive && dailyDiscover?.isNotEmpty() == true) list.add(HomeSection.DailyDiscover)
-            if (!chipActive && keepListening?.isNotEmpty() == true) list.add(HomeSection.KeepListening)
-            if (!chipActive && accountPlaylists?.isNotEmpty() == true) list.add(HomeSection.AccountPlaylists)
-            if (!chipActive && forgottenFavorites?.isNotEmpty() == true) list.add(HomeSection.ForgottenFavorites)
+            // And the beat goes on: the home keeps only liked music, mixes and quick picks;
+            // everything else lives on the separate "Suggerimenti" page.
+            fun isMixSection(index: Int): Boolean {
+                val section = homePage?.sections?.getOrNull(index) ?: return false
+                return index == 0 ||
+                    "mix" in section.title.lowercase() ||
+                    section.items.count { "mix" in it.title.lowercase() } >= 2
+            }
 
-            if (!chipActive) {
-                similarRecommendations?.indices?.forEach { i ->
-                    list.add(HomeSection.SimilarRecommendation(i))
+            if (!suggestionsOnly) {
+                if (quickPicks?.isNotEmpty() == true) list.add(HomeSection.QuickPicks)
+                homePage?.sections?.indices?.filter { isMixSection(it) }?.forEach { i ->
+                    list.add(HomeSection.HomePageSection(i))
                 }
+            } else {
+                if (!chipActive && dailyDiscover?.isNotEmpty() == true) list.add(HomeSection.DailyDiscover)
+                if (!chipActive && keepListening?.isNotEmpty() == true) list.add(HomeSection.KeepListening)
+                if (!chipActive && accountPlaylists?.isNotEmpty() == true) list.add(HomeSection.AccountPlaylists)
+                if (!chipActive && forgottenFavorites?.isNotEmpty() == true) list.add(HomeSection.ForgottenFavorites)
+                if (!chipActive) {
+                    similarRecommendations?.indices?.forEach { i ->
+                        list.add(HomeSection.SimilarRecommendation(i))
+                    }
+                }
+                homePage?.sections?.indices?.filter { chipActive || !isMixSection(it) }?.forEach { i ->
+                    list.add(HomeSection.HomePageSection(i))
+                }
+                if (explorePage?.moodAndGenres != null) list.add(HomeSection.MoodAndGenres)
             }
-
-            homePage?.sections?.indices?.forEach { i ->
-                list.add(HomeSection.HomePageSection(i))
-            }
-
-            if (explorePage?.moodAndGenres != null) list.add(HomeSection.MoodAndGenres)
 
             val defaultOrder =
                 mapOf(
-                    HomeSection.QuickPicks to 100,
+                    HomeSection.QuickPicks to 10,
                     HomeSection.DailyDiscover to 70,
                     HomeSection.AccountPlaylists to 60,
                     HomeSection.MoodAndGenres to 55,
@@ -1075,10 +1090,7 @@ fun HomeScreen(
 
             list.sortedByDescending { section ->
                 when (section) {
-                    is HomeSection.HomePageSection -> {
-                        val title = homePage?.sections?.getOrNull(section.index)?.title?.lowercase().orEmpty()
-                        if ("mix" in title) 90 - section.index else 20 - section.index
-                    }
+                    is HomeSection.HomePageSection -> if (suggestionsOnly) 20 - section.index else 95 - section.index
                     is HomeSection.SimilarRecommendation -> 30 - section.index
                     else -> defaultOrder[section] ?: 0
                 }
@@ -1094,7 +1106,7 @@ fun HomeScreen(
     }
 
     var beatSearchOpen by rememberSaveable { mutableStateOf(false) }
-    if (beatSearchOpen) {
+    if (beatSearchOpen && !suggestionsOnly) {
         BeatHomeSearchOverlay(onClose = { beatSearchOpen = false })
         return
     }
@@ -1104,6 +1116,9 @@ fun HomeScreen(
             accountPlaylists?.firstOrNull { it.title.trim().equals(BEAT_MUSIC_PLAYLIST_TITLE, ignoreCase = true) }
         }
 
+    val washStartPx = with(LocalDensity.current) {
+        if (suggestionsOnly) 0f else WindowInsets.statusBars.getTop(this) + (AppBarHeight + BeatSearchPillHeight).toPx()
+    }
     val washTop = MaterialTheme.colorScheme.primary.copy(alpha = 0.30f)
     val washMid = MaterialTheme.colorScheme.tertiary.copy(alpha = 0.12f)
     PullToRefreshBox(
@@ -1112,7 +1127,8 @@ fun HomeScreen(
                 drawRect(
                     Brush.verticalGradient(
                         colors = listOf(washTop, washMid, Color.Transparent),
-                        endY = 560.dp.toPx(),
+                        startY = washStartPx,
+                        endY = washStartPx + 520.dp.toPx(),
                     ),
                 )
             },
@@ -1157,13 +1173,25 @@ fun HomeScreen(
 
             LazyColumn(
                 state = lazylistState,
-                contentPadding = LocalPlayerAwareWindowInsets.current.asPaddingValues(),
+                contentPadding =
+                    if (suggestionsOnly) {
+                        LocalPlayerAwareWindowInsets.current
+                            .only(WindowInsetsSides.Bottom + WindowInsetsSides.Horizontal)
+                            .add(WindowInsets.statusBars)
+                            .asPaddingValues()
+                    } else {
+                        LocalPlayerAwareWindowInsets.current
+                            .add(WindowInsets(top = BeatSearchPillHeight))
+                            .asPaddingValues()
+                    },
             ) {
-                item(key = "beat_search") {
-                    BeatHomeSearchPill(onClick = { beatSearchOpen = true })
+                if (suggestionsOnly) {
+                    item(key = "beat_suggestions_header") {
+                        BeatSuggestionsHeader(onBack = { navController.navigateUp() })
+                    }
                 }
 
-                if (selectedChip == null) {
+                if (!suggestionsOnly && selectedChip == null) {
                     item(key = "beat_shortcuts") {
                         BeatHomeShortcuts(
                             musicPlaylist = beatMusicPlaylist,
@@ -1175,7 +1203,7 @@ fun HomeScreen(
                     }
                 }
 
-                item {
+                if (suggestionsOnly) item {
                     ChipsRow(
                         chips = homePage?.chips?.map { it to it.title } ?: emptyList(),
                         currentValue = selectedChip,
@@ -1358,7 +1386,7 @@ fun HomeScreen(
                     }
                 }
 
-                if (selectedChip == null) {
+                if (suggestionsOnly && selectedChip == null) {
                     item(key = "wrapped_card") {
                         AnimatedVisibility(visible = shouldShowWrappedCard) {
                             Card(
@@ -2465,6 +2493,12 @@ fun HomeScreen(
                     }
                 }
 
+                if (!suggestionsOnly) {
+                    item(key = "beat_suggestions_button") {
+                        BeatSuggestionsButton(onClick = { navController.navigate(BEAT_SUGGESTIONS_ROUTE) })
+                    }
+                }
+
                 // Only show shimmer during initial loading, not for pagination
                 if (isLoading && homePage?.sections.isNullOrEmpty()) {
                     item(key = "loading_shimmer") {
@@ -2517,7 +2551,7 @@ fun HomeScreen(
             }
 
             HideOnScrollFAB(
-                visible = allLocalItems.isNotEmpty() || allYtItems.isNotEmpty(),
+                visible = suggestionsOnly && (allLocalItems.isNotEmpty() || allYtItems.isNotEmpty()),
                 lazyListState = lazylistState,
                 icon = R.drawable.shuffle,
                 onClick = {
@@ -2593,6 +2627,17 @@ fun HomeScreen(
                 onRecognitionClick = {
                     navController.navigate("recognition")
                 },
+            )
+
+            // Search stays pinned under the top bar while the home scrolls.
+            if (!suggestionsOnly) BeatHomeSearchPill(
+                onClick = { beatSearchOpen = true },
+                modifier =
+                    Modifier
+                        .align(Alignment.TopCenter)
+                        .windowInsetsPadding(
+                            LocalPlayerAwareWindowInsets.current.only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal),
+                        ).background(MaterialTheme.colorScheme.background),
             )
         }
     }

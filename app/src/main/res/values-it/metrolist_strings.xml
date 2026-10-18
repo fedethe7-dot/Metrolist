@@ -892,4 +892,6 @@
     <string name="beat_theme_orange_blue">Arancio e blu</string>
     <string name="beat_theme_racing_red">Rosso corsa</string>
     <string name="beat_theme_silver">Argento</string>
+    <string name="beat_suggestions">Suggerimenti</string>
+    <string name="beat_suggestions_subtitle">Artisti simili, generi, epoche e altro</string>
 </resources>

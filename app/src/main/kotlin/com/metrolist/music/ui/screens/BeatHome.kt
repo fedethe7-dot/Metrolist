@@ -85,6 +85,12 @@ import kotlinx.coroutines.launch
 /** The user's own YouTube playlist shown as the "Musica" card on the home screen. */
 const val BEAT_MUSIC_PLAYLIST_TITLE = "Musica"
 
+/** Route of the page with everything that is not on the home ("Suggerimenti"). */
+const val BEAT_SUGGESTIONS_ROUTE = "beat_suggestions"
+
+/** Height of [BeatHomeSearchPill] including its vertical padding. */
+val BeatSearchPillHeight = 68.dp
+
 /** Tappable search field at the top of the home screen; opens [BeatHomeSearchOverlay]. */
 @Composable
 fun BeatHomeSearchPill(
@@ -344,5 +350,71 @@ fun BeatHomeSearchOverlay(onClose: () -> Unit) {
                 pureBlack = pureBlack,
             )
         }
+    }
+}
+
+/** Big button at the bottom of the home that opens the suggestions page. */
+@Composable
+fun BeatSuggestionsButton(onClick: () -> Unit) {
+    val colors = MaterialTheme.colorScheme
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 16.dp)
+            .clip(RoundedCornerShape(22.dp))
+            .background(Brush.linearGradient(listOf(colors.primary.copy(alpha = 0.35f), colors.tertiary.copy(alpha = 0.25f))))
+            .clickable(onClick = onClick)
+            .padding(horizontal = 18.dp, vertical = 18.dp),
+    ) {
+        Icon(
+            painter = painterResource(R.drawable.explore_outlined),
+            contentDescription = null,
+            tint = colors.onSurface,
+            modifier = Modifier.size(28.dp),
+        )
+        Spacer(Modifier.width(14.dp))
+        Column(Modifier.weight(1f)) {
+            Text(
+                text = stringResource(R.string.beat_suggestions),
+                fontSize = 17.sp,
+                fontWeight = FontWeight.Bold,
+                color = colors.onSurface,
+            )
+            Text(
+                text = stringResource(R.string.beat_suggestions_subtitle),
+                fontSize = 13.sp,
+                lineHeight = 16.sp,
+                color = colors.onSurfaceVariant,
+            )
+        }
+        Icon(
+            painter = painterResource(R.drawable.navigate_next),
+            contentDescription = null,
+            tint = colors.onSurfaceVariant,
+        )
+    }
+}
+
+/** Title row of the suggestions page, with a back arrow. */
+@Composable
+fun BeatSuggestionsHeader(onBack: () -> Unit) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 4.dp, vertical = 8.dp),
+    ) {
+        IconButton(onClick = onBack) {
+            Icon(
+                painter = painterResource(R.drawable.arrow_back),
+                contentDescription = stringResource(R.string.dismiss),
+            )
+        }
+        Text(
+            text = stringResource(R.string.beat_suggestions),
+            style = MaterialTheme.typography.headlineSmall,
+            fontWeight = FontWeight.Bold,
+        )
     }
 }

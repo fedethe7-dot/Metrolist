@@ -1010,4 +1010,6 @@
     <string name="beat_theme_orange_blue">Orange and blue</string>
     <string name="beat_theme_racing_red">Racing red</string>
     <string name="beat_theme_silver">Silver</string>
+    <string name="beat_suggestions">Suggestions</string>
+    <string name="beat_suggestions_subtitle">Similar artists, genres, eras and more</string>
 </resources>

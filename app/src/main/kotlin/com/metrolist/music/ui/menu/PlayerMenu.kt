@@ -241,7 +241,8 @@ fun PlayerMenu(
         )
     }
 
-    if (isQueueTrigger != true) {
+    // The volume slider is only kept while casting; the phone has its own volume keys.
+    if (isQueueTrigger != true && isCasting) {
         Column(
             modifier =
                 Modifier
@@ -313,74 +314,24 @@ fun PlayerMenu(
             ),
     ) {
         item {
-            val startingRadioText = stringResource(R.string.starting_radio)
-            NewActionGrid(
-                actions =
-                    listOfNotNull(
-                        if (!isListenTogetherGuest) {
-                            NewAction(
-                                icon = {
-                                    Icon(
-                                        painter = painterResource(R.drawable.radio),
-                                        contentDescription = null,
-                                        modifier = Modifier.size(32.dp),
-                                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    )
-                                },
-                                text = stringResource(R.string.start_radio),
-                                onClick = {
-                                    Toast.makeText(context, startingRadioText, Toast.LENGTH_SHORT).show()
-                                    playerConnection.startRadioSeamlessly()
-                                    onDismiss()
-                                },
+            Material3MenuGroup(
+                items = listOf(
+                    Material3MenuItemData(
+                        title = { Text(text = stringResource(R.string.add_to_playlist)) },
+                        icon = {
+                            Icon(
+                                painter = painterResource(R.drawable.playlist_add),
+                                contentDescription = null,
+                                modifier = Modifier.size(24.dp),
                             )
-                        } else {
-                            null
                         },
-                        NewAction(
-                            icon = {
-                                Icon(
-                                    painter = painterResource(R.drawable.playlist_add),
-                                    contentDescription = null,
-                                    modifier = Modifier.size(32.dp),
-                                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                                )
-                            },
-                            text = stringResource(R.string.add_to_playlist),
-                            onClick = { showChoosePlaylistDialog = true },
-                        ),
-                        NewAction(
-                            icon = {
-                                Icon(
-                                    painter = painterResource(R.drawable.link),
-                                    contentDescription = null,
-                                    modifier = Modifier.size(32.dp),
-                                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                                )
-                            },
-                            text = stringResource(R.string.copy_link),
-                            onClick = {
-                                val clipboard =
-                                    context.getSystemService(
-                                        android.content.Context.CLIPBOARD_SERVICE,
-                                    ) as android.content.ClipboardManager
-                                val clip =
-                                    android.content.ClipData.newPlainText(
-                                        "Song Link",
-                                        "https://music.youtube.com/watch?v=${mediaMetadata.id}",
-                                    )
-                                clipboard.setPrimaryClip(clip)
-                                android.widget.Toast
-                                    .makeText(context, R.string.link_copied, android.widget.Toast.LENGTH_SHORT)
-                                    .show()
-                                onDismiss()
-                            },
-                        ),
+                        onClick = { showChoosePlaylistDialog = true },
                     ),
-                columns = if (isListenTogetherGuest) 2 else 3,
-                modifier = Modifier.padding(horizontal = 4.dp, vertical = 16.dp),
+                ),
             )
         }
+
+        item { Spacer(modifier = Modifier.height(12.dp)) }
 
         item {
             // Check if this is a podcast episode (album ID doesn't start with MPREb_)
@@ -389,67 +340,6 @@ fun PlayerMenu(
             Material3MenuGroup(
                 items =
                     buildList {
-                        // Don't show "View Artist" for podcasts - only show "View Podcast"
-                        if (artists.isNotEmpty() && !isPodcast) {
-                            add(
-                                Material3MenuItemData(
-                                    title = { Text(text = stringResource(R.string.view_artist)) },
-                                    description = {
-                                        Text(
-                                            text = mediaMetadata.artists.joinToString { it.name },
-                                            maxLines = 1,
-                                            overflow = TextOverflow.Ellipsis,
-                                        )
-                                    },
-                                    icon = {
-                                        Icon(
-                                            painter = painterResource(R.drawable.artist),
-                                            contentDescription = null,
-                                            modifier = Modifier.size(24.dp),
-                                        )
-                                    },
-                                    onClick = {
-                                        if (mediaMetadata.artists.size == 1) {
-                                            navController.navigate("artist/${mediaMetadata.artists[0].id}")
-                                            playerBottomSheetState.collapseSoft()
-                                            onDismiss()
-                                        } else {
-                                            showSelectArtistDialog = true
-                                        }
-                                    },
-                                ),
-                            )
-                        }
-                        if (mediaMetadata.album != null) {
-                            add(
-                                Material3MenuItemData(
-                                    title = { Text(text = stringResource(if (isPodcast) R.string.view_podcast else R.string.view_album)) },
-                                    description = {
-                                        Text(
-                                            text = mediaMetadata.album.title,
-                                            maxLines = 1,
-                                            overflow = TextOverflow.Ellipsis,
-                                        )
-                                    },
-                                    icon = {
-                                        Icon(
-                                            painter = painterResource(if (isPodcast) R.drawable.mic else R.drawable.album),
-                                            contentDescription = null,
-                                            modifier = Modifier.size(24.dp),
-                                        )
-                                    },
-                                    onClick = {
-                                        if (isPodcast) {
-                                            navController.navigate("online_podcast/${mediaMetadata.album.id}")
-                                        } else {
-                                            navController.navigate("album/${mediaMetadata.album.id}")
-                                        }
-                                        playerBottomSheetState.collapseSoft()
-                                        onDismiss()
-                                    },
-                                ),
-                            )
-                        }
                         // Add to Library option
                         val isInLibrary = librarySong?.song?.inLibrary != null
                         add(
@@ -482,32 +372,6 @@ fun PlayerMenu(
                                 },
                                 onClick = {
                                     playerConnection.toggleLibrary()
-                                    onDismiss()
-                                },
-                            ),
-                        )
-                        add(
-                            Material3MenuItemData(
-                                title = {
-                                    Text(
-                                        text = if (isPinned) stringResource(R.string.unpin_from_speed_dial) else stringResource(R.string.pin_to_speed_dial),
-                                    )
-                                },
-                                icon = {
-                                    Icon(
-                                        painter = painterResource(if (isPinned) R.drawable.remove else R.drawable.add),
-                                        contentDescription = null,
-                                        modifier = Modifier.size(24.dp),
-                                    )
-                                },
-                                onClick = {
-                                    coroutineScope.launch(Dispatchers.IO) {
-                                        if (isPinned) {
-                                            database.speedDialDao.delete(mediaMetadata.id)
-                                        } else {
-                                            database.speedDialDao.insert(SpeedDialItem.fromYTItem(mediaMetadata.toYTItem()))
-                                        }
-                                    }
                                     onDismiss()
                                 },
                             ),
@@ -588,157 +452,6 @@ fun PlayerMenu(
             )
         }
 
-        item { Spacer(modifier = Modifier.height(12.dp)) }
-
-        item {
-            Material3MenuGroup(
-                items =
-                    buildList {
-                        add(
-                            Material3MenuItemData(
-                                title = { Text(text = stringResource(R.string.listen_together)) },
-                                icon = {
-                                    // Show a small badge when there are pending suggestions
-                                    Box {
-                                        Icon(
-                                            painter = painterResource(R.drawable.group),
-                                            contentDescription = null,
-                                            modifier = Modifier.size(24.dp),
-                                        )
-                                        if (pendingSuggestions.isNotEmpty()) {
-                                            Surface(
-                                                shape = RoundedCornerShape(12.dp),
-                                                color = MaterialTheme.colorScheme.primary,
-                                                modifier =
-                                                    Modifier
-                                                        .offset(x = 8.dp, y = (-6).dp)
-                                                        .align(Alignment.TopEnd),
-                                            ) {
-                                                Text(
-                                                    text = pendingSuggestions.size.toString(),
-                                                    color = MaterialTheme.colorScheme.onPrimary,
-                                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
-                                                    style = MaterialTheme.typography.labelSmall,
-                                                )
-                                            }
-                                        }
-                                    }
-                                },
-                                onClick = { showListenTogetherDialog = true },
-                            ),
-                        )
-                        if (isListenTogetherGuest) {
-                            add(
-                                Material3MenuItemData(
-                                    title = { Text(text = stringResource(R.string.resync)) },
-                                    icon = {
-                                        Icon(
-                                            painter = painterResource(R.drawable.replay),
-                                            contentDescription = null,
-                                            modifier = Modifier.size(24.dp),
-                                        )
-                                    },
-                                    onClick = {
-                                        listenTogetherManager.requestSync()
-                                        onDismiss()
-                                    },
-                                ),
-                            )
-                        }
-                    },
-            )
-        }
-
-        item { Spacer(modifier = Modifier.height(12.dp)) }
-
-        item {
-            Material3MenuGroup(
-                items =
-                    buildList {
-                        add(
-                            Material3MenuItemData(
-                                title = { Text(text = stringResource(R.string.details)) },
-                                description = { Text(text = stringResource(R.string.details_desc)) },
-                                icon = {
-                                    Icon(
-                                        painter = painterResource(R.drawable.info),
-                                        contentDescription = null,
-                                        modifier = Modifier.size(24.dp),
-                                    )
-                                },
-                                onClick = {
-                                    onShowDetailsDialog()
-                                    onDismiss()
-                                },
-                            ),
-                        )
-
-                        if (isQueueTrigger != true) {
-                            add(
-                                Material3MenuItemData(
-                                    title = { Text(text = stringResource(R.string.equalizer)) },
-                                    description = { Text(text = stringResource(R.string.equalizer_desc)) },
-                                    icon = {
-                                        Icon(
-                                            painter = painterResource(R.drawable.equalizer),
-                                            contentDescription = null,
-                                            modifier = Modifier.size(24.dp),
-                                        )
-                                    },
-                                    onClick = {
-                                        navController.navigate("equalizer")
-                                        onDismiss()
-                                    },
-                                ),
-                            )
-                            add(
-                                Material3MenuItemData(
-                                    title = { Text(text = stringResource(R.string.system_equalizer)) },
-                                    description = { Text(text = stringResource(R.string.system_equalizer_desc)) },
-                                    icon = {
-                                        Icon(
-                                            painter = painterResource(R.drawable.graphic_eq),
-                                            contentDescription = null,
-                                            modifier = Modifier.size(24.dp),
-                                        )
-                                    },
-                                    onClick = {
-                                        val audioSessionId = playerConnection.player.audioSessionId
-                                        if (audioSessionId != C.AUDIO_SESSION_ID_UNSET && audioSessionId > 0) {
-                                            val intent = Intent(AudioEffect.ACTION_DISPLAY_AUDIO_EFFECT_CONTROL_PANEL).apply {
-                                                putExtra(AudioEffect.EXTRA_AUDIO_SESSION, audioSessionId)
-                                                putExtra(AudioEffect.EXTRA_PACKAGE_NAME, context.packageName)
-                                                putExtra(AudioEffect.EXTRA_CONTENT_TYPE, AudioEffect.CONTENT_TYPE_MUSIC)
-                                            }
-                                            if (intent.resolveActivity(context.packageManager) != null) {
-                                                systemEqLauncher.launch(intent)
-                                            }
-                                        }
-                                        onDismiss()
-                                    },
-                                ),
-                            )
-                            add(
-                                Material3MenuItemData(
-                                    title = { Text(text = stringResource(R.string.advanced)) },
-                                    description = { Text(text = stringResource(R.string.advanced_desc)) },
-                                    icon = {
-                                        Icon(
-                                            painter = painterResource(R.drawable.tune),
-                                            contentDescription = null,
-                                            modifier = Modifier.size(24.dp),
-                                        )
-                                    },
-                                    onClick = {
-                                        if (!varispeedMode) showPitchTempoDialog = true
-                                        else showSpeedDialog = true
-                                    },
-                                ),
-                            )
-                        }
-                    },
-            )
-        }
     }
 }
 

@@ -292,125 +292,19 @@ fun YouTubeSongMenu(
         ),
     ) {
         item {
-            NewActionGrid(
-                actions = listOfNotNull(
-                    if (!isGuest) {
-                        NewAction(
-                            icon = {
-                                Icon(
-                                    painter = painterResource(R.drawable.playlist_play),
-                                    contentDescription = null,
-                                    modifier = Modifier.size(28.dp),
-                                    tint = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                            },
-                            text = stringResource(R.string.play_next),
-                            onClick = {
-                                playerConnection.playNext(song.copy(thumbnail = song.thumbnail.resize(544,544)).toMediaItem())
-                                onDismiss()
-                            }
-                        )
-                    } else null,
-                    NewAction(
+            Material3MenuGroup(
+                items = listOf(
+                    Material3MenuItemData(
+                        title = { Text(text = stringResource(R.string.add_to_playlist)) },
                         icon = {
                             Icon(
                                 painter = painterResource(R.drawable.playlist_add),
                                 contentDescription = null,
-                                modifier = Modifier.size(28.dp),
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         },
-                        text = stringResource(R.string.add_to_playlist),
-                        onClick = {
-                            showChoosePlaylistDialog = true
-                        }
+                        onClick = { showChoosePlaylistDialog = true },
                     ),
-                    NewAction(
-                        icon = {
-                            Icon(
-                                painter = painterResource(R.drawable.share),
-                                contentDescription = null,
-                                modifier = Modifier.size(28.dp),
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        },
-                        text = stringResource(R.string.share),
-                        onClick = {
-                            val intent = Intent().apply {
-                                action = Intent.ACTION_SEND
-                                type = "text/plain"
-                                putExtra(Intent.EXTRA_TEXT, song.shareLink)
-                            }
-                            context.startActivity(Intent.createChooser(intent, null))
-                            onDismiss()
-                        }
-                    )
                 ),
-                columns = if (isGuest) 2 else 3,
-                modifier = Modifier.padding(horizontal = 4.dp, vertical = 16.dp)
-            )
-        }
-
-        item {
-            Material3MenuGroup(
-                items = listOfNotNull(
-                    if (listenTogetherManager != null && listenTogetherManager.isInRoom && !listenTogetherManager.isHost) {
-                        Material3MenuItemData(
-                            title = { Text(text = stringResource(R.string.suggest_to_host)) },
-                            icon = {
-                                Icon(
-                                    painter = painterResource(R.drawable.queue_music),
-                                    contentDescription = null,
-                                )
-                            },
-                            onClick = {
-                                val durationMs = if (song.duration != null && song.duration!! > 0) song.duration!! * 1000L else 180000L
-                                val trackInfo = com.metrolist.music.listentogether.TrackInfo(
-                                    id = song.id,
-                                    title = song.title,
-                                    artist = artists.joinToString(", ") { it.name },
-                                    album = song.album?.name,
-                                    duration = durationMs,
-                                    thumbnail = song.thumbnail
-                                )
-                                listenTogetherManager.suggestTrack(trackInfo)
-                                onDismiss()
-                            }
-                        )
-                    } else null,
-                    if (!isGuest) {
-                        Material3MenuItemData(
-                            title = { Text(text = stringResource(R.string.start_radio)) },
-                            description = { Text(text = stringResource(R.string.start_radio_desc)) },
-                            icon = {
-                                Icon(
-                                    painter = painterResource(R.drawable.radio),
-                                    contentDescription = null,
-                                )
-                            },
-                            onClick = {
-                                playerConnection.playQueue(YouTubeQueue.radio(song.toMediaMetadata()))
-                                onDismiss()
-                            }
-                        )
-                    } else null,
-                    if (!isGuest) {
-                        Material3MenuItemData(
-                            title = { Text(text = stringResource(R.string.add_to_queue)) },
-                            description = { Text(text = stringResource(R.string.add_to_queue_desc)) },
-                            icon = {
-                                Icon(
-                                    painter = painterResource(R.drawable.queue_music),
-                                    contentDescription = null,
-                                )
-                            },
-                            onClick = {
-                                playerConnection.addToQueue(song.toMediaItem())
-                                onDismiss()
-                            }
-                        )
-                    } else null
-                )
             )
         }
 
@@ -500,31 +394,6 @@ fun YouTubeSongMenu(
                             )
                         )
                     }
-                    add(
-                        Material3MenuItemData(
-                            title = { 
-                                Text(
-                                    text = if (isPinned) stringResource(R.string.unpin_from_speed_dial) else stringResource(R.string.pin_to_speed_dial)
-                                ) 
-                            },
-                            icon = {
-                                Icon(
-                                    painter = painterResource(if (isPinned) R.drawable.remove else R.drawable.add),
-                                    contentDescription = null,
-                                )
-                            },
-                            onClick = {
-                                coroutineScope.launch(Dispatchers.IO) {
-                                    if (isPinned) {
-                                        database.speedDialDao.delete(song.id)
-                                    } else {
-                                        database.speedDialDao.insert(SpeedDialItem.fromYTItem(song))
-                                    }
-                                }
-                                onDismiss()
-                            }
-                        )
-                    )
                     add(
                         Material3MenuItemData(
                             title = {
@@ -635,85 +504,5 @@ fun YouTubeSongMenu(
             )
         }
 
-        item { Spacer(modifier = Modifier.height(12.dp)) }
-
-        item {
-            // Check if this is a podcast episode (album ID doesn't start with MPREb_)
-            val isPodcast = song.album?.let { !it.id.startsWith("MPREb_") } ?: false
-
-            Material3MenuGroup(
-                items = buildList {
-                    // Don't show "View Artist" for podcasts - only show "View Podcast"
-                    if (artists.isNotEmpty() && !isPodcast) {
-                        add(
-                            Material3MenuItemData(
-                                title = { Text(text = stringResource(R.string.view_artist)) },
-                                description = {
-                                    Text(
-                                        text = song.artists.joinToString {
-                                            ArtistNameAliases.resolve(artistNameAliases, it.id, it.name)
-                                        },
-                                    )
-                                },
-                                icon = {
-                                    Icon(
-                                        painter = painterResource(R.drawable.artist),
-                                        contentDescription = null,
-                                    )
-                                },
-                                onClick = {
-                                    if (artists.size == 1) {
-                                        navController.navigate("artist/${artists[0].id}")
-                                        onDismiss()
-                                    } else {
-                                        showSelectArtistDialog = true
-                                    }
-                                }
-                            )
-                        )
-                    }
-                    song.album?.let { album ->
-                        add(
-                            Material3MenuItemData(
-                                title = { Text(text = stringResource(if (isPodcast) R.string.view_podcast else R.string.view_album)) },
-                                description = { Text(text = album.name) },
-                                icon = {
-                                    Icon(
-                                        painter = painterResource(if (isPodcast) R.drawable.mic else R.drawable.album),
-                                        contentDescription = null,
-                                    )
-                                },
-                                onClick = {
-                                    if (isPodcast) {
-                                        navController.navigate("online_podcast/${album.id}")
-                                    } else {
-                                        navController.navigate("album/${album.id}")
-                                    }
-                                    onDismiss()
-                                }
-                            )
-                        )
-                    }
-                    add(
-                        Material3MenuItemData(
-                            title = { Text(text = stringResource(R.string.details)) },
-                            description = { Text(text = stringResource(R.string.details_desc)) },
-                            icon = {
-                                Icon(
-                                    painter = painterResource(R.drawable.info),
-                                    contentDescription = null,
-                                )
-                            },
-                            onClick = {
-                                onDismiss()
-                                bottomSheetPageState.show {
-                                    ShowMediaInfo(song.id)
-                                }
-                            }
-                        )
-                    )
-                }
-            )
-        }
     }
 }
