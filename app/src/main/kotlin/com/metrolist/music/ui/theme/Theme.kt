@@ -32,8 +32,24 @@ fun MetrolistTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
     pureBlack: Boolean = false,
     themeColor: Color = DefaultThemeColor,
+    beatTheme: BeatTheme? = null,
     content: @Composable () -> Unit,
 ) {
+    if (beatTheme != null && darkTheme) {
+        val seed = if (beatTheme.followsCover) themeColor else beatTheme.seed
+        val generated = rememberDynamicColorScheme(
+            seedColor = seed,
+            isDark = true,
+            specVersion = ColorSpec.SpecVersion.SPEC_2025,
+            style = PaletteStyle.Vibrant,
+        )
+        val beatScheme = remember(generated, beatTheme, pureBlack) {
+            generated.withBeatTheme(beatTheme, pureBlack)
+        }
+        MaterialTheme(colorScheme = beatScheme, content = content)
+        return
+    }
+
     val context = LocalContext.current
     // Determine if system dynamic colors should be used (Android S+ and default theme color)
     val useSystemDynamicColor = (themeColor == DefaultThemeColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S)

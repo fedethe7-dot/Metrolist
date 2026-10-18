@@ -995,4 +995,19 @@
     <string name="top_result">Top result</string>
     <string name="other">Other</string>
     <string name="beat_lyrics_short">Lyrics</string>
+    <string name="beat_search_hint">Search songs, artists, albums</string>
+    <string name="beat_liked">Liked</string>
+    <string name="beat_liked_subtitle">All your liked songs</string>
+    <string name="beat_music_subtitle">Your playlist</string>
+    <string name="beat_music_missing">Create a YouTube playlist called \"Musica\"</string>
+    <string name="beat_themes_title">Themes</string>
+    <string name="beat_theme_cover">From the cover</string>
+    <string name="beat_theme_night_blue">Night blue</string>
+    <string name="beat_theme_sunset">Sunset</string>
+    <string name="beat_theme_emerald">Emerald</string>
+    <string name="beat_theme_galaxy">Galaxy</string>
+    <string name="beat_theme_red_gold">Red and gold</string>
+    <string name="beat_theme_orange_blue">Orange and blue</string>
+    <string name="beat_theme_racing_red">Racing red</string>
+    <string name="beat_theme_silver">Silver</string>
 </resources>

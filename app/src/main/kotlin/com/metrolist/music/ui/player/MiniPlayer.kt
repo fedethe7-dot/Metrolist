@@ -29,6 +29,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -308,7 +309,6 @@ private fun NewMiniPlayer(
                 .fillMaxWidth()
                 .height(MiniPlayerHeight)
                 .windowInsetsPadding(WindowInsets.systemBars.only(WindowInsetsSides.Horizontal))
-                .padding(horizontal = 12.dp)
                 .let { baseModifier ->
                     if (swipeThumbnail) {
                         baseModifier.pointerInput(Unit) {
@@ -373,20 +373,28 @@ private fun NewMiniPlayer(
                 },
     ) {
         val interactionSource = remember { MutableInteractionSource() }
+        val progressTrackColor = onSurfaceColor.copy(alpha = 0.15f)
         Box(
             modifier =
                 Modifier
                     .then(if (isTabletLandscape) Modifier.width(500.dp).align(Alignment.Center) else Modifier.fillMaxWidth())
-                    .height(64.dp)
+                    .fillMaxHeight()
                     .offset { IntOffset(offsetXAnimatable.value.roundToInt(), 0) }
-                    .clip(RoundedCornerShape(32.dp))
                     .background(color = backgroundColor)
-                    .border(1.dp, outlineColor.copy(alpha = 0.3f), RoundedCornerShape(32.dp))
                     .clickable(
                         interactionSource = interactionSource,
                         indication = LocalIndication.current,
                         onClick = onClick
-                    ),
+                    )
+                    .drawWithContent {
+                        drawContent()
+                        val barHeight = 3.dp.toPx()
+                        drawRect(color = progressTrackColor, size = Size(size.width, barHeight))
+                        drawRect(
+                            color = primaryColor,
+                            size = Size(size.width * progressState.progress.coerceIn(0f, 1f), barHeight),
+                        )
+                    },
         ) {
             when (miniPlayerBackground) {
                 MiniPlayerBackgroundStyle.BLUR -> {
@@ -417,34 +425,34 @@ private fun NewMiniPlayer(
                     Box(
                         Modifier
                             .fillMaxSize()
-                            .background(
-                                Brush.horizontalGradient(colors)
-                            )
-                            .background(Color.Black.copy(alpha = 0.15f)),
+                            .background(Brush.horizontalGradient(colors))
+                            .background(Color.Black.copy(alpha = 0.25f)),
                     )
                 }
                 else -> {}
             }
             Row(
                 verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.fillMaxSize().padding(horizontal = 8.dp, vertical = 8.dp),
+                modifier = Modifier.fillMaxSize().padding(start = 12.dp, end = 4.dp, top = 3.dp),
             ) {
-                // Play button with progress - isolated composable
-                NewMiniPlayerPlayButton(
-                    progressState = progressState,
-                    playbackState = playbackState,
-                    isCasting = isCasting,
-                    castHandler = castHandler,
-                    playerConnection = playerConnection,
-                    mediaMetadata = mediaMetadata,
-                    primaryColor = primaryColor,
-                    outlineColor = outlineColor,
-                    listenTogetherManager = listenTogetherManager,
-                )
+                Box(
+                    modifier = Modifier
+                        .size(52.dp)
+                        .clip(RoundedCornerShape(10.dp))
+                        .background(onSurfaceColor.copy(alpha = 0.1f)),
+                ) {
+                    mediaMetadata?.thumbnailUrl?.let { url ->
+                        AsyncImage(
+                            model = remember(url) { url.resize(160, 160) },
+                            contentDescription = null,
+                            contentScale = ContentScale.Crop,
+                            modifier = Modifier.fillMaxSize(),
+                        )
+                    }
+                }
 
-                Spacer(modifier = Modifier.width(16.dp))
+                Spacer(modifier = Modifier.width(12.dp))
 
-                // Song info - isolated composable
                 NewMiniPlayerSongInfo(
                     mediaMetadata = mediaMetadata,
                     onSurfaceColor = onSurfaceColor,
@@ -452,41 +460,106 @@ private fun NewMiniPlayer(
                     modifier = Modifier.weight(1f),
                 )
 
-                Spacer(modifier = Modifier.width(12.dp))
-
-                // Cast indicator
                 if (isCasting) {
+                    Spacer(modifier = Modifier.width(8.dp))
                     Icon(
                         painter = painterResource(R.drawable.cast_connected),
                         contentDescription = "Casting",
                         tint = primaryColor,
-                        modifier = Modifier.size(20.dp),
-                    )
-                    Spacer(modifier = Modifier.width(12.dp))
-                }
-
-// Subscribe button - isolated composable
-                mediaMetadata?.artists?.firstOrNull()?.id?.let { artistId ->
-                    SubscribeButton(
-                        artistId = artistId,
-                        metadata = mediaMetadata!!,
-                        primaryColor = primaryColor,
-                        outlineColor = outlineColor,
-                        onSurfaceColor = onSurfaceColor,
+                        modifier = Modifier.size(18.dp),
                     )
                 }
 
-                Spacer(modifier = Modifier.width(8.dp))
-
-// Favorite button - isolated composable
-                mediaMetadata?.let { FavoriteButton(
-                    songId = it.id,
-                    errorColor = errorColor,
-                    outlineColor = outlineColor,
-                    onSurfaceColor = onSurfaceColor,
+                BeatMiniControls(
+                    playbackState = playbackState,
+                    isCasting = isCasting,
+                    castHandler = castHandler,
+                    playerConnection = playerConnection,
+                    canSkipPrevious = canSkipPrevious,
+                    canSkipNext = canSkipNext,
+                    contentColor = onSurfaceColor,
+                    listenTogetherManager = listenTogetherManager,
                 )
-                }
             }
+        }
+    }
+}
+
+/**
+ * Previous / play-pause / next, always visible in the docked mini player.
+ */
+@Composable
+private fun BeatMiniControls(
+    playbackState: Int,
+    isCasting: Boolean,
+    castHandler: CastConnectionHandler?,
+    playerConnection: PlayerConnection,
+    canSkipPrevious: Boolean,
+    canSkipNext: Boolean,
+    contentColor: Color,
+    listenTogetherManager: ListenTogetherManager?,
+) {
+    val isPlaying by playerConnection.isPlaying.collectAsState()
+    val castIsPlaying by castHandler?.castIsPlaying?.collectAsState() ?: remember { mutableStateOf(false) }
+    val effectiveIsPlaying = if (isCasting) castIsPlaying else isPlaying
+    val isListenTogetherGuest = listenTogetherManager?.let { it.isInRoom && !it.isHost } ?: false
+    val isMuted by playerConnection.isMuted.collectAsStateWithLifecycle()
+
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        IconButton(
+            onClick = { playerConnection.seekToPrevious() },
+            enabled = canSkipPrevious && !isListenTogetherGuest,
+        ) {
+            Icon(
+                painter = painterResource(R.drawable.skip_previous),
+                contentDescription = null,
+                tint = contentColor.copy(alpha = if (canSkipPrevious && !isListenTogetherGuest) 1f else 0.35f),
+                modifier = Modifier.size(26.dp),
+            )
+        }
+        Box(
+            contentAlignment = Alignment.Center,
+            modifier = Modifier
+                .size(44.dp)
+                .clip(CircleShape)
+                .background(contentColor)
+                .clickable {
+                    if (isListenTogetherGuest) {
+                        playerConnection.toggleMute()
+                    } else if (isCasting) {
+                        if (castIsPlaying) castHandler?.pause() else castHandler?.play()
+                    } else if (playbackState == Player.STATE_ENDED) {
+                        playerConnection.player.seekTo(0, 0)
+                        playerConnection.player.playWhenReady = true
+                    } else {
+                        playerConnection.togglePlayPause()
+                    }
+                },
+        ) {
+            Icon(
+                painter = painterResource(
+                    when {
+                        isListenTogetherGuest -> if (isMuted) R.drawable.volume_off else R.drawable.volume_up
+                        playbackState == Player.STATE_ENDED -> R.drawable.replay
+                        effectiveIsPlaying -> R.drawable.pause
+                        else -> R.drawable.play
+                    },
+                ),
+                contentDescription = null,
+                tint = Color.Black,
+                modifier = Modifier.size(24.dp),
+            )
+        }
+        IconButton(
+            onClick = { playerConnection.seekToNext() },
+            enabled = canSkipNext && !isListenTogetherGuest,
+        ) {
+            Icon(
+                painter = painterResource(R.drawable.skip_next),
+                contentDescription = null,
+                tint = contentColor.copy(alpha = if (canSkipNext && !isListenTogetherGuest) 1f else 0.35f),
+                modifier = Modifier.size(26.dp),
+            )
         }
     }
 }
@@ -640,10 +713,10 @@ private fun NewMiniPlayerSongInfo(
                 text = metadata.title,
                 color = onSurfaceColor,
                 fontSize = 14.sp,
-                fontWeight = FontWeight.Medium,
-                maxLines = 1,
-                overflow = TextOverflow.Clip,
-                modifier = Modifier.basicMarquee(iterations = 1, initialDelayMillis = 3000, velocity = 30.dp),
+                lineHeight = 17.sp,
+                fontWeight = FontWeight.SemiBold,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
             )
             Row(
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -656,8 +729,7 @@ private fun NewMiniPlayerSongInfo(
                          color = onSurfaceColor.copy(alpha = 0.7f),
                         fontSize = 12.sp,
                         maxLines = 1,
-                        overflow = TextOverflow.Clip,
-                        modifier = Modifier.basicMarquee(iterations = 1, initialDelayMillis = 3000, velocity = 30.dp),
+                        overflow = TextOverflow.Ellipsis,
                     )
                 }
             }

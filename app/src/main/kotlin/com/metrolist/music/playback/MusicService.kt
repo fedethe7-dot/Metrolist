@@ -1183,6 +1183,7 @@ class MusicService :
         }
         if (startupPrefs!![PersistentQueueKey] ?: true) {
             val queueFile = filesDir.resolve(PERSISTENT_QUEUE_FILE)
+            if (!queueFile.exists()) proposeStartupSong()
             if (queueFile.exists()) {
                 runCatching {
                     queueFile.inputStream().use { fis ->
@@ -1755,6 +1756,26 @@ class MusicService :
         }
         database.query {
             update(song.song.copy(dateDownload = java.time.LocalDateTime.now()))
+        }
+    }
+
+    /**
+     * When there is no previous queue to restore, prepare (paused) a song from the user's
+     * liked songs, or from quick picks, so the app always opens with something ready to play.
+     */
+    private fun proposeStartupSong() {
+        scope.launch {
+            playerInitialized.first { it }
+            if (player.currentMediaItem != null) return@launch
+            val song =
+                withContext(Dispatchers.IO) {
+                    runCatching {
+                        database.likedSongsByCreateDateDesc(50, 0).randomOrNull()
+                            ?: database.quickPicks().first().randomOrNull()
+                    }.getOrNull()
+                } ?: return@launch
+            if (player.currentMediaItem != null) return@launch
+            playQueue(YouTubeQueue.radio(song.toMediaMetadata()), playWhenReady = false)
         }
     }
 

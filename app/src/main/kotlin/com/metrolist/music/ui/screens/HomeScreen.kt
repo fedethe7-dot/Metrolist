@@ -73,6 +73,7 @@ import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
@@ -1042,9 +1043,9 @@ fun HomeScreen(
             val list = mutableListOf<HomeSection>()
             val chipActive = selectedChip != null
 
-            if (!chipActive && speedDialItems.isNotEmpty()) list.add(HomeSection.SpeedDial)
+            // And the beat goes on: no speed dial or community playlists, and a fixed order
+            // that keeps liked music, quick picks and personal mixes at the top.
             if (!chipActive && quickPicks?.isNotEmpty() == true) list.add(HomeSection.QuickPicks)
-            if (!chipActive && communityPlaylists?.isNotEmpty() == true) list.add(HomeSection.FromTheCommunity)
             if (!chipActive && dailyDiscover?.isNotEmpty() == true) list.add(HomeSection.DailyDiscover)
             if (!chipActive && keepListening?.isNotEmpty() == true) list.add(HomeSection.KeepListening)
             if (!chipActive && accountPlaylists?.isNotEmpty() == true) list.add(HomeSection.AccountPlaylists)
@@ -1062,77 +1063,24 @@ fun HomeScreen(
 
             if (explorePage?.moodAndGenres != null) list.add(HomeSection.MoodAndGenres)
 
-            if (randomizeHomeOrder) {
-                list.sortedByDescending { section ->
-                    // Use a stable seed for each section based on the session seed + section ID hash
-                    // This ensures the weight for a specific section remains constant during a session (until refresh)
-                    // even if other sections appear/disappear, preventing jumping.
-                    val sectionRandom = Random(randomSeed + section.id.hashCode())
+            val defaultOrder =
+                mapOf(
+                    HomeSection.QuickPicks to 100,
+                    HomeSection.DailyDiscover to 70,
+                    HomeSection.AccountPlaylists to 60,
+                    HomeSection.MoodAndGenres to 55,
+                    HomeSection.KeepListening to 50,
+                    HomeSection.ForgottenFavorites to 40,
+                )
 
-                    // Flatten the base values to allow for more overlap and variation
-                    // All "main" sections start closer together
-                    val base =
-                        when (section) {
-                            HomeSection.SpeedDial,
-                            HomeSection.QuickPicks,
-                            HomeSection.DailyDiscover,
-                            -> 500
-
-                            // Top tier starts equal
-
-                            HomeSection.KeepListening,
-                            HomeSection.AccountPlaylists,
-                            HomeSection.ForgottenFavorites,
-                            HomeSection.FromTheCommunity,
-                            -> 300
-
-                            // Middle tier starts equal
-
-                            else -> 100 // Bottom tier
-                        }
-
-                    val modifier =
-                        when (section) {
-                            // Top tier: High variance to allow shuffling among themselves
-                            // Range: [500-200, 500+400] = [300, 900]
-                            HomeSection.SpeedDial,
-                            HomeSection.QuickPicks,
-                            HomeSection.DailyDiscover,
-                            -> sectionRandom.nextInt(-200, 400)
-
-                            // Middle tier: Can jump up to challenge top tier, or drop lower
-                            // Range: [300-100, 300+400] = [200, 700]
-                            // This allows them to occasionally appear above a "bad roll" top tier item
-                            HomeSection.KeepListening,
-                            HomeSection.AccountPlaylists,
-                            HomeSection.ForgottenFavorites,
-                            HomeSection.FromTheCommunity,
-                            -> sectionRandom.nextInt(-100, 400)
-
-                            // Bottom tier: Standard variance
-                            else -> sectionRandom.nextInt(-50, 50)
-                        }
-                    base + modifier
-                }
-            } else {
-                val defaultOrder =
-                    mapOf(
-                        HomeSection.SpeedDial to 100,
-                        HomeSection.QuickPicks to 90,
-                        HomeSection.FromTheCommunity to 80,
-                        HomeSection.DailyDiscover to 70,
-                        HomeSection.KeepListening to 60,
-                        HomeSection.AccountPlaylists to 50,
-                        HomeSection.ForgottenFavorites to 40,
-                        HomeSection.MoodAndGenres to 10,
-                    )
-
-                list.sortedByDescending { section ->
-                    when (section) {
-                        is HomeSection.SimilarRecommendation -> 30 - section.index
-                        is HomeSection.HomePageSection -> 20 - section.index
-                        else -> defaultOrder[section] ?: 0
+            list.sortedByDescending { section ->
+                when (section) {
+                    is HomeSection.HomePageSection -> {
+                        val title = homePage?.sections?.getOrNull(section.index)?.title?.lowercase().orEmpty()
+                        if ("mix" in title) 90 - section.index else 20 - section.index
                     }
+                    is HomeSection.SimilarRecommendation -> 30 - section.index
+                    else -> defaultOrder[section] ?: 0
                 }
             }
         }
@@ -1145,7 +1093,29 @@ fun HomeScreen(
         forgottenFavoritesLazyGridState.scrollToItem(0)
     }
 
+    var beatSearchOpen by rememberSaveable { mutableStateOf(false) }
+    if (beatSearchOpen) {
+        BeatHomeSearchOverlay(onClose = { beatSearchOpen = false })
+        return
+    }
+
+    val beatMusicPlaylist =
+        remember(accountPlaylists) {
+            accountPlaylists?.firstOrNull { it.title.trim().equals(BEAT_MUSIC_PLAYLIST_TITLE, ignoreCase = true) }
+        }
+
+    val washTop = MaterialTheme.colorScheme.primary.copy(alpha = 0.30f)
+    val washMid = MaterialTheme.colorScheme.tertiary.copy(alpha = 0.12f)
     PullToRefreshBox(
+        modifier =
+            Modifier.drawBehind {
+                drawRect(
+                    Brush.verticalGradient(
+                        colors = listOf(washTop, washMid, Color.Transparent),
+                        endY = 560.dp.toPx(),
+                    ),
+                )
+            },
         state = pullRefreshState,
         isRefreshing = isRefreshing,
         onRefresh = viewModel::refresh,
@@ -1189,6 +1159,22 @@ fun HomeScreen(
                 state = lazylistState,
                 contentPadding = LocalPlayerAwareWindowInsets.current.asPaddingValues(),
             ) {
+                item(key = "beat_search") {
+                    BeatHomeSearchPill(onClick = { beatSearchOpen = true })
+                }
+
+                if (selectedChip == null) {
+                    item(key = "beat_shortcuts") {
+                        BeatHomeShortcuts(
+                            musicPlaylist = beatMusicPlaylist,
+                            onLikedClick = { navController.navigate("auto_playlist/liked") },
+                            onMusicClick = {
+                                beatMusicPlaylist?.let { navController.navigate("online_playlist/${it.id}") }
+                            },
+                        )
+                    }
+                }
+
                 item {
                     ChipsRow(
                         chips = homePage?.chips?.map { it to it.title } ?: emptyList(),

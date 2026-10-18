@@ -142,7 +142,6 @@ import com.metrolist.music.constants.DismissedKmpUpdateKey
 import com.metrolist.music.constants.DismissedStandaloneUpdateKey
 import com.metrolist.music.constants.DensityScaleKey
 import com.metrolist.music.constants.DisableScreenshotKey
-import com.metrolist.music.constants.DynamicThemeKey
 import com.metrolist.music.constants.EnableHighRefreshRateKey
 import com.metrolist.music.constants.EnableLandscapeScalingKey
 import com.metrolist.music.constants.ExperimentalLyricsKey
@@ -195,6 +194,10 @@ import com.metrolist.music.ui.screens.navigationBuilder
 import com.metrolist.music.ui.screens.settings.ChangelogScreen
 import com.metrolist.music.ui.screens.settings.DarkMode
 import com.metrolist.music.ui.screens.settings.NavigationTab
+import androidx.datastore.preferences.core.edit
+import com.metrolist.music.ui.theme.BeatThemeKey
+import com.metrolist.music.ui.component.BeatThemePickerDialog
+import com.metrolist.music.ui.theme.BeatThemes
 import com.metrolist.music.ui.theme.ColorSaver
 import com.metrolist.music.ui.theme.DefaultThemeColor
 import com.metrolist.music.ui.theme.MetrolistTheme
@@ -566,7 +569,6 @@ class MainActivity : FragmentActivity() {
             }
         }
 
-        val enableDynamicTheme by rememberPreference(DynamicThemeKey, defaultValue = true)
         val enableHighRefreshRate by rememberPreference(EnableHighRefreshRateKey, defaultValue = true)
 
         LaunchedEffect(enableHighRefreshRate) {
@@ -596,6 +598,19 @@ class MainActivity : FragmentActivity() {
                 window.attributes = params
             }
         }
+
+        // And the beat goes on is designed dark-first: switch to dark once, the user can still change it.
+        LaunchedEffect(Unit) {
+            withContext(Dispatchers.IO) {
+                dataStore.edit { prefs ->
+                    if (prefs[DarkModeKey] == null) prefs[DarkModeKey] = DarkMode.ON.name
+                }
+            }
+        }
+        val beatThemeId by rememberPreference(BeatThemeKey, defaultValue = BeatThemes.Default.id)
+        val beatTheme = remember(beatThemeId) { BeatThemes.byId(beatThemeId) }
+        // A fixed beat theme keeps its colors; only "Dalla copertina" follows the song.
+        val enableDynamicTheme = beatTheme.followsCover
 
         val darkTheme by rememberEnumPreference(DarkModeKey, defaultValue = DarkMode.AUTO)
         val isSystemInDarkTheme = isSystemInDarkTheme()
@@ -683,6 +698,7 @@ class MainActivity : FragmentActivity() {
             darkTheme = useDarkTheme,
             pureBlack = pureBlack,
             themeColor = themeColor,
+            beatTheme = beatTheme,
         ) {
             val currentDensity = LocalDensity.current
             val windowInfo = LocalWindowInfo.current
@@ -1022,6 +1038,18 @@ class MainActivity : FragmentActivity() {
                     }
 
                 var showAccountDialog by remember { mutableStateOf(false) }
+                var showBeatThemePicker by remember { mutableStateOf(false) }
+                if (showBeatThemePicker) {
+                    BeatThemePickerDialog(
+                        selectedId = beatThemeId,
+                        onSelect = { theme ->
+                            lifecycleScope.launch(Dispatchers.IO) {
+                                dataStore.edit { it[BeatThemeKey] = theme.id }
+                            }
+                        },
+                        onDismiss = { showBeatThemePicker = false },
+                    )
+                }
 
                 val pauseListenHistory by rememberPreference(PauseListenHistoryKey, defaultValue = false)
                 val eventCount by database.eventCount().collectAsStateWithLifecycle(initialValue = 0)
@@ -1067,6 +1095,14 @@ class MainActivity : FragmentActivity() {
                                             )
                                         },
                                         actions = {
+                                            if (currentRoute == Screens.Home.route) {
+                                                IconButton(onClick = { showBeatThemePicker = true }) {
+                                                    Icon(
+                                                        painter = painterResource(R.drawable.palette),
+                                                        contentDescription = stringResource(R.string.beat_themes_title),
+                                                    )
+                                                }
+                                            }
                                             if (showHistoryButton) {
                                                 IconButton(onClick = { navController.navigate("history") }) {
                                                     Icon(
@@ -1117,7 +1153,7 @@ class MainActivity : FragmentActivity() {
                                         scrollBehavior = topAppBarScrollBehavior,
                                         colors =
                                             TopAppBarDefaults.topAppBarColors(
-                                                containerColor = if (pureBlack) Color.Black else MaterialTheme.colorScheme.surfaceContainer,
+                                                containerColor = if (pureBlack) Color.Black else MaterialTheme.colorScheme.background,
                                                 scrolledContainerColor = if (pureBlack) Color.Black else MaterialTheme.colorScheme.surfaceContainer,
                                                 titleContentColor = MaterialTheme.colorScheme.onSurface,
                                                 actionIconContentColor = MaterialTheme.colorScheme.onSurfaceVariant,

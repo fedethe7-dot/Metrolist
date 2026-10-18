@@ -877,4 +877,19 @@
     <string name="enable_discord_rpc">Abilita la Rich Presence</string>
     <string name="force_bottom_navbar">Forza la barra di navigazione in basso</string>
     <string name="beat_lyrics_short">Testo</string>
+    <string name="beat_search_hint">Cerca brani, artisti, album</string>
+    <string name="beat_liked">Mi piace</string>
+    <string name="beat_liked_subtitle">Tutti i tuoi Mi piace</string>
+    <string name="beat_music_subtitle">La tua playlist</string>
+    <string name="beat_music_missing">Crea su YouTube una playlist chiamata \"Musica\"</string>
+    <string name="beat_themes_title">Temi</string>
+    <string name="beat_theme_cover">Dalla copertina</string>
+    <string name="beat_theme_night_blue">Notte blu</string>
+    <string name="beat_theme_sunset">Tramonto</string>
+    <string name="beat_theme_emerald">Smeraldo</string>
+    <string name="beat_theme_galaxy">Galassia</string>
+    <string name="beat_theme_red_gold">Rosso e oro</string>
+    <string name="beat_theme_orange_blue">Arancio e blu</string>
+    <string name="beat_theme_racing_red">Rosso corsa</string>
+    <string name="beat_theme_silver">Argento</string>
 </resources>
