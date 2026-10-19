@@ -20,7 +20,7 @@ concurrency:
 
 env:
   BEAT_APPLICATION_ID: com.beatgoeson.music
-  BEAT_APP_NAME: And the beat goes on
+  BEAT_APP_NAME: Beat
 
 jobs:
   build:
