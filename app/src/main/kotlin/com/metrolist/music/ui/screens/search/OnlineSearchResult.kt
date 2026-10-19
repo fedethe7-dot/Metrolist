@@ -5,6 +5,7 @@
 
 package com.metrolist.music.ui.screens.search
 
+import com.metrolist.music.ui.screens.Screens
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
@@ -199,6 +200,16 @@ fun OnlineSearchResult(
             }
         }
 
+    // Erasing the search brings back the real home instead of an empty results page.
+    val goHome: () -> Unit = {
+        isSearchFocused = false
+        focusManager.clearFocus()
+        keyboardController?.hide()
+        if (!navController.popBackStack(Screens.Home.route, inclusive = false)) {
+            navController.navigateUp()
+        }
+    }
+
     // Update query when decodedQuery changes
     LaunchedEffect(decodedQuery) {
         query = TextFieldValue(decodedQuery, TextRange(decodedQuery.length))
@@ -372,7 +383,9 @@ fun OnlineSearchResult(
         OutlinedTextField(
             value = query,
             onValueChange = { newQuery ->
+                val erased = newQuery.text.isEmpty() && query.text.isNotEmpty()
                 query = newQuery
+                if (erased) goHome()
             },
             placeholder = {
                 Text(
@@ -397,6 +410,7 @@ fun OnlineSearchResult(
                     IconButton(
                         onClick = {
                             query = TextFieldValue("")
+                            goHome()
                         },
                     ) {
                         Icon(
@@ -558,7 +572,11 @@ fun OnlineSearchResult(
             if (isSearchFocused) {
                 OnlineSearchScreen(
                     query = query.text,
-                    onQueryChange = { query = it },
+                    onQueryChange = {
+                        val erased = it.text.isEmpty() && query.text.isNotEmpty()
+                        query = it
+                        if (erased) goHome()
+                    },
                     onSearch = onSearch,
                     onDismiss = {
                         isSearchFocused = false

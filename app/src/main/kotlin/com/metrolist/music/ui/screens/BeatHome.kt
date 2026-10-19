@@ -274,6 +274,8 @@ fun BeatHomeSearchOverlay(onClose: () -> Unit) {
                 database.query { insert(SearchHistory(query = searchQuery)) }
             }
         }
+        // Close the overlay: coming back from the results shows the real home.
+        onClose()
     }
 
     Column(
@@ -303,7 +305,11 @@ fun BeatHomeSearchOverlay(onClose: () -> Unit) {
             }
             BasicTextField(
                 value = query,
-                onValueChange = { query = it },
+                onValueChange = {
+                    val erased = it.text.isEmpty() && query.text.isNotEmpty()
+                    query = it
+                    if (erased) onClose()
+                },
                 singleLine = true,
                 textStyle = TextStyle(color = MaterialTheme.colorScheme.onSurface, fontSize = 16.sp),
                 cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
@@ -327,7 +333,7 @@ fun BeatHomeSearchOverlay(onClose: () -> Unit) {
                     .focusRequester(focusRequester),
             )
             if (query.text.isNotEmpty()) {
-                IconButton(onClick = { query = TextFieldValue() }) {
+                IconButton(onClick = { query = TextFieldValue(); onClose() }) {
                     Icon(
                         painter = painterResource(R.drawable.close),
                         contentDescription = null,
@@ -344,7 +350,11 @@ fun BeatHomeSearchOverlay(onClose: () -> Unit) {
         ) {
             OnlineSearchScreen(
                 query = query.text,
-                onQueryChange = { query = it },
+                onQueryChange = {
+                    val erased = it.text.isEmpty() && query.text.isNotEmpty()
+                    query = it
+                    if (erased) onClose()
+                },
                 onSearch = { handleSearch(it) },
                 onDismiss = {},
                 pureBlack = pureBlack,
