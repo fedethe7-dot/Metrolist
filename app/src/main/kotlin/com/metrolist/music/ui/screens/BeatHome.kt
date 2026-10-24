@@ -6,6 +6,7 @@
 package com.metrolist.music.ui.screens
 
 import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.isSystemInDarkTheme
@@ -168,6 +169,7 @@ fun beatBackgroundColor(): Color {
 }
 
 /** Snaps a full-width horizontal grid one page (column) at a time. */
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun rememberBeatPageFling(state: LazyGridState): FlingBehavior {
     val provider = remember(state) { SnapLayoutInfoProvider(lazyGridState = state, positionInLayout = { _, _ -> 0f }) }
