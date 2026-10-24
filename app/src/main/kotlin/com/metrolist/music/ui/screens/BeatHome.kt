@@ -98,6 +98,9 @@ import kotlin.math.roundToInt
 /** The user's own YouTube playlist shown as the "Musica" card on the home screen. */
 const val BEAT_MUSIC_PLAYLIST_TITLE = "Musica"
 
+/** Id of that playlist on YouTube, so the card works even when the library list does not include it. */
+const val BEAT_MUSIC_PLAYLIST_ID = "PLCOS7vGHf_Ps"
+
 /** Where the "Musica" card stands: still loading, found (with the page to open) or not found anywhere. */
 sealed interface BeatMusicPlaylist {
     data object Loading : BeatMusicPlaylist
@@ -114,6 +117,9 @@ fun findBeatMusicPlaylist(
     savedPlaylists: List<Playlist>?,
 ): BeatMusicPlaylist {
     fun matches(name: String?) = name?.trim()?.equals(BEAT_MUSIC_PLAYLIST_TITLE, ignoreCase = true) == true
+    accountPlaylists?.firstOrNull { it.id.removePrefix("VL") == BEAT_MUSIC_PLAYLIST_ID }?.let {
+        return BeatMusicPlaylist.Found("online_playlist/${it.id}", it.thumbnail)
+    }
     accountPlaylists?.firstOrNull { matches(it.title) }?.let {
         return BeatMusicPlaylist.Found("online_playlist/${it.id}", it.thumbnail)
     }
@@ -124,7 +130,8 @@ fun findBeatMusicPlaylist(
             saved.playlist.thumbnailUrl ?: saved.thumbnails.firstOrNull(),
         )
     }
-    return if (accountPlaylists == null || savedPlaylists == null) BeatMusicPlaylist.Loading else BeatMusicPlaylist.Missing
+    // Not in the lists (or still loading): open the known playlist directly.
+    return BeatMusicPlaylist.Found("online_playlist/$BEAT_MUSIC_PLAYLIST_ID", null)
 }
 
 /** Route of the page with everything that is not on the home ("Suggerimenti"). */
