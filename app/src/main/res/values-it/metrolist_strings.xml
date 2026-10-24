@@ -882,6 +882,7 @@
     <string name="beat_liked_subtitle">Tutti i tuoi Mi piace</string>
     <string name="beat_music_subtitle">La tua playlist</string>
     <string name="beat_music_missing">Crea su YouTube una playlist chiamata \"Musica\"</string>
+    <string name="beat_music_loading">Caricamento…</string>
     <string name="beat_themes_title">Temi</string>
     <string name="beat_theme_cover">Dalla copertina</string>
     <string name="beat_theme_night_blue">Notte blu</string>

@@ -9,6 +9,7 @@ import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
+import androidx.compose.foundation.gestures.ScrollableDefaults
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.gestures.snapping.rememberSnapFlingBehavior
 import androidx.compose.foundation.isSystemInDarkTheme
@@ -1111,10 +1112,9 @@ fun HomeScreen(
         return
     }
 
+    val savedPlaylists by remember(database) { database.playlistsByNameAsc() }.collectAsStateWithLifecycle(initialValue = null)
     val beatMusicPlaylist =
-        remember(accountPlaylists) {
-            accountPlaylists?.firstOrNull { it.title.trim().equals(BEAT_MUSIC_PLAYLIST_TITLE, ignoreCase = true) }
-        }
+        remember(accountPlaylists, savedPlaylists) { findBeatMusicPlaylist(accountPlaylists, savedPlaylists) }
 
     val washStartPx = with(LocalDensity.current) {
         if (suggestionsOnly) 0f else WindowInsets.statusBars.getTop(this) + (AppBarHeight + BeatSearchPillHeight).toPx()
@@ -1150,7 +1150,14 @@ fun HomeScreen(
             modifier = Modifier.fillMaxSize(),
             contentAlignment = Alignment.TopStart,
         ) {
-            val horizontalLazyGridItemWidthFactor = if (maxWidth * 0.475f >= 320.dp) 0.475f else 0.9f
+            // On a phone the Beat home shows song lists one full-width page at a time (no peeking column).
+            val beatFullWidthPages = !suggestionsOnly && maxWidth * 0.475f < 320.dp
+            val horizontalLazyGridItemWidthFactor =
+                when {
+                    beatFullWidthPages -> 1f
+                    maxWidth * 0.475f >= 320.dp -> 0.475f
+                    else -> 0.9f
+                }
             val horizontalLazyGridItemWidth = maxWidth * horizontalLazyGridItemWidthFactor
             val quickPicksSnapLayoutInfoProvider =
                 remember(quickPicksLazyGridState) {
@@ -1197,7 +1204,7 @@ fun HomeScreen(
                             musicPlaylist = beatMusicPlaylist,
                             onLikedClick = { navController.navigate("auto_playlist/liked") },
                             onMusicClick = {
-                                beatMusicPlaylist?.let { navController.navigate("online_playlist/${it.id}") }
+                                (beatMusicPlaylist as? BeatMusicPlaylist.Found)?.let { navController.navigate(it.route) }
                             },
                         )
                     }
@@ -1798,6 +1805,7 @@ fun HomeScreen(
                                 }
 
                                 item(key = "quick_picks_list") {
+                                  Column {
                                     LazyHorizontalGrid(
                                         state = quickPicksLazyGridState,
                                         rows = GridCells.Fixed(4),
@@ -1880,6 +1888,10 @@ fun HomeScreen(
                                             )
                                         }
                                     }
+                                    if (beatFullWidthPages) {
+                                        BeatPageDots(quickPicksLazyGridState, quickPicks.distinctBy { it.id }.size, rows = 4)
+                                    }
+                                  }
                                 }
                             }
                         }
@@ -2116,6 +2128,7 @@ fun HomeScreen(
                                 }
 
                                 item(key = "forgotten_favorites_list") {
+                                  Column {
                                     // take min in case list size is less than 4
                                     val rows = min(4, forgottenFavorites.size)
                                     LazyHorizontalGrid(
@@ -2203,6 +2216,10 @@ fun HomeScreen(
                                             )
                                         }
                                     }
+                                    if (beatFullWidthPages) {
+                                        BeatPageDots(forgottenFavoritesLazyGridState, forgottenFavorites.distinctBy { it.id }.size, rows = rows)
+                                    }
+                                  }
                                 }
                             }
                         }
@@ -2356,9 +2373,14 @@ fun HomeScreen(
                                 if (isSongsOnlySection) {
                                     // Render songs as a horizontal scrollable list (like Quick picks in YouTube Music)
                                     item(key = "home_section_list_${section.index}") {
+                                      val sectionGridState = remember("section_${section.index}_grid") { LazyGridState() }
+                                      Column {
                                         LazyHorizontalGrid(
-                                            state = remember("section_${section.index}_grid") { LazyGridState() },
+                                            state = sectionGridState,
                                             rows = GridCells.Fixed(4),
+                                            flingBehavior =
+                                                if (beatFullWidthPages) rememberBeatPageFling(sectionGridState)
+                                                else ScrollableDefaults.flingBehavior(),
                                             contentPadding =
                                                 WindowInsets.systemBars
                                                     .only(WindowInsetsSides.Horizontal)
@@ -2428,6 +2450,10 @@ fun HomeScreen(
                                                 )
                                             }
                                         }
+                                        if (beatFullWidthPages) {
+                                            BeatPageDots(sectionGridState, sectionSongs.distinctBy { it.id }.size, rows = 4)
+                                        }
+                                      }
                                     }
                                 } else {
                                     // Render mixed content as horizontal grid items (albums, playlists, artists, etc.)
@@ -2629,15 +2655,10 @@ fun HomeScreen(
                 },
             )
 
-            // Search stays pinned under the top bar while the home scrolls.
-            if (!suggestionsOnly) BeatHomeSearchPill(
+            // Search stays pinned at the top while the home scrolls, following the top bar when it hides.
+            if (!suggestionsOnly) BeatHomeSearchHeader(
                 onClick = { beatSearchOpen = true },
-                modifier =
-                    Modifier
-                        .align(Alignment.TopCenter)
-                        .windowInsetsPadding(
-                            LocalPlayerAwareWindowInsets.current.only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal),
-                        ).background(MaterialTheme.colorScheme.background),
+                modifier = Modifier.align(Alignment.TopCenter),
             )
         }
     }

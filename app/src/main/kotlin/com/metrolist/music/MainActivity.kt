@@ -1067,6 +1067,7 @@ class MainActivity : FragmentActivity() {
                     LocalContentColor provides if (pureBlack) Color.White else contentColorFor(MaterialTheme.colorScheme.surface),
                     LocalPlayerConnection provides playerConnection,
                     LocalPlayerAwareWindowInsets provides playerAwareWindowInsets,
+                    LocalTopBarHeightOffset provides remember(topAppBarScrollBehavior) { { topAppBarScrollBehavior.state.heightOffset } },
                     LocalDownloadUtil provides downloadUtil,
                     LocalShimmerTheme provides ShimmerTheme,
                     LocalSyncUtils provides syncUtils,
@@ -1154,7 +1155,12 @@ class MainActivity : FragmentActivity() {
                                         colors =
                                             TopAppBarDefaults.topAppBarColors(
                                                 containerColor = if (pureBlack) Color.Black else MaterialTheme.colorScheme.background,
-                                                scrolledContainerColor = if (pureBlack) Color.Black else MaterialTheme.colorScheme.surfaceContainer,
+                                                // On the home the search header sits right under the bar: keep one solid colour.
+                                                scrolledContainerColor = when {
+                                                    pureBlack -> Color.Black
+                                                    currentRoute == Screens.Home.route -> MaterialTheme.colorScheme.background
+                                                    else -> MaterialTheme.colorScheme.surfaceContainer
+                                                },
                                                 titleContentColor = MaterialTheme.colorScheme.onSurface,
                                                 actionIconContentColor = MaterialTheme.colorScheme.onSurfaceVariant,
                                                 navigationIconContentColor = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -1755,6 +1761,9 @@ val LocalDatabase = staticCompositionLocalOf<MusicDatabase> { error("No database
 val LocalNavController = staticCompositionLocalOf<NavController> { error("No NavController provided") }
 val LocalPlayerConnection = staticCompositionLocalOf<PlayerConnection?> { error("No PlayerConnection provided") }
 val LocalPlayerAwareWindowInsets = compositionLocalOf<WindowInsets> { error("No WindowInsets provided") }
+
+/** How far (in px, zero or negative) the top app bar is currently scrolled away. Read it during layout or draw. */
+val LocalTopBarHeightOffset = staticCompositionLocalOf<() -> Float> { { 0f } }
 val LocalDownloadUtil = staticCompositionLocalOf<DownloadUtil> { error("No DownloadUtil provided") }
 val LocalSyncUtils = staticCompositionLocalOf<SyncUtils> { error("No SyncUtils provided") }
 val LocalListenTogetherManager = staticCompositionLocalOf<com.metrolist.music.listentogether.ListenTogetherManager?> { null }

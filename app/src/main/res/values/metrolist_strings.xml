@@ -1000,6 +1000,7 @@
     <string name="beat_liked_subtitle">All your liked songs</string>
     <string name="beat_music_subtitle">Your playlist</string>
     <string name="beat_music_missing">Create a YouTube playlist called \"Musica\"</string>
+    <string name="beat_music_loading">Loading…</string>
     <string name="beat_themes_title">Themes</string>
     <string name="beat_theme_cover">From the cover</string>
     <string name="beat_theme_night_blue">Night blue</string>
