@@ -440,11 +440,7 @@ fun BeatHomeSearchOverlay(onClose: () -> Unit) {
             }
             BasicTextField(
                 value = query,
-                onValueChange = {
-                    val erased = it.text.isEmpty() && query.text.isNotEmpty()
-                    query = it
-                    if (erased) onClose()
-                },
+                onValueChange = { query = it },
                 singleLine = true,
                 textStyle = TextStyle(color = MaterialTheme.colorScheme.onSurface, fontSize = 16.sp),
                 cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
@@ -468,10 +464,13 @@ fun BeatHomeSearchOverlay(onClose: () -> Unit) {
                     .focusRequester(focusRequester),
             )
             if (query.text.isNotEmpty()) {
-                IconButton(onClick = { query = TextFieldValue(); onClose() }) {
+                IconButton(onClick = {
+                    query = TextFieldValue()
+                    runCatching { focusRequester.requestFocus() }
+                }) {
                     Icon(
                         painter = painterResource(R.drawable.close),
-                        contentDescription = null,
+                        contentDescription = stringResource(R.string.clear),
                         tint = MaterialTheme.colorScheme.onSurface,
                     )
                 }
@@ -485,11 +484,7 @@ fun BeatHomeSearchOverlay(onClose: () -> Unit) {
         ) {
             OnlineSearchScreen(
                 query = query.text,
-                onQueryChange = {
-                    val erased = it.text.isEmpty() && query.text.isNotEmpty()
-                    query = it
-                    if (erased) onClose()
-                },
+                onQueryChange = { query = it },
                 onSearch = { handleSearch(it) },
                 onDismiss = {},
                 pureBlack = pureBlack,

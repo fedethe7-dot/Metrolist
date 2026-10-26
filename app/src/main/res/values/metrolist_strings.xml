@@ -1013,4 +1013,6 @@
     <string name="beat_theme_silver">Silver</string>
     <string name="beat_suggestions">Suggestions</string>
     <string name="beat_suggestions_subtitle">Similar artists, genres, eras and more</string>
+    <string name="beat_mute">Mute</string>
+    <string name="beat_unmute">Unmute</string>
 </resources>

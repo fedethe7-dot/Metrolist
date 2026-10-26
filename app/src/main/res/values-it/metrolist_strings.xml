@@ -895,4 +895,6 @@
     <string name="beat_theme_silver">Argento</string>
     <string name="beat_suggestions">Suggerimenti</string>
     <string name="beat_suggestions_subtitle">Artisti simili, generi, epoche e altro</string>
+    <string name="beat_mute">Silenzia</string>
+    <string name="beat_unmute">Riattiva audio</string>
 </resources>

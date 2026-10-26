@@ -599,11 +599,13 @@ class MainActivity : FragmentActivity() {
             }
         }
 
-        // And the beat goes on is designed dark-first: switch to dark once, the user can still change it.
+        // Beat themes exist only in dark: "Auto" on a light phone would silently drop them and fall back
+        // to the stock look, so Auto becomes dark. An explicit "Off" is still respected.
         LaunchedEffect(Unit) {
             withContext(Dispatchers.IO) {
                 dataStore.edit { prefs ->
-                    if (prefs[DarkModeKey] == null) prefs[DarkModeKey] = DarkMode.ON.name
+                    val current = prefs[DarkModeKey]
+                    if (current == null || current == DarkMode.AUTO.name) prefs[DarkModeKey] = DarkMode.ON.name
                 }
             }
         }

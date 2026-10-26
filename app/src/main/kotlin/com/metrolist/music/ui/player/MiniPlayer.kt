@@ -75,6 +75,10 @@ import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.graphics.luminance
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.IntOffset
@@ -512,18 +516,32 @@ private fun BeatMiniControls(
         ) {
             Icon(
                 painter = painterResource(R.drawable.skip_previous),
-                contentDescription = null,
+                contentDescription = stringResource(R.string.previous),
                 tint = contentColor.copy(alpha = if (canSkipPrevious && !isListenTogetherGuest) 1f else 0.35f),
                 modifier = Modifier.size(26.dp),
             )
         }
+        val playIcon = when {
+            isListenTogetherGuest -> if (isMuted) R.drawable.volume_off else R.drawable.volume_up
+            playbackState == Player.STATE_ENDED -> R.drawable.replay
+            effectiveIsPlaying -> R.drawable.pause
+            else -> R.drawable.play
+        }
+        val playLabel = stringResource(
+            when {
+                isListenTogetherGuest -> if (isMuted) R.string.beat_unmute else R.string.beat_mute
+                effectiveIsPlaying && playbackState != Player.STATE_ENDED -> R.string.pause
+                else -> R.string.play
+            },
+        )
         Box(
             contentAlignment = Alignment.Center,
             modifier = Modifier
-                .size(44.dp)
+                .size(48.dp)
                 .clip(CircleShape)
                 .background(contentColor)
-                .clickable {
+                .semantics { contentDescription = playLabel }
+                .clickable(role = Role.Button) {
                     if (isListenTogetherGuest) {
                         playerConnection.toggleMute()
                     } else if (isCasting) {
@@ -537,16 +555,9 @@ private fun BeatMiniControls(
                 },
         ) {
             Icon(
-                painter = painterResource(
-                    when {
-                        isListenTogetherGuest -> if (isMuted) R.drawable.volume_off else R.drawable.volume_up
-                        playbackState == Player.STATE_ENDED -> R.drawable.replay
-                        effectiveIsPlaying -> R.drawable.pause
-                        else -> R.drawable.play
-                    },
-                ),
+                painter = painterResource(playIcon),
                 contentDescription = null,
-                tint = Color.Black,
+                tint = if (contentColor.luminance() > 0.5f) Color.Black else Color.White,
                 modifier = Modifier.size(24.dp),
             )
         }
@@ -556,7 +567,7 @@ private fun BeatMiniControls(
         ) {
             Icon(
                 painter = painterResource(R.drawable.skip_next),
-                contentDescription = null,
+                contentDescription = stringResource(R.string.next),
                 tint = contentColor.copy(alpha = if (canSkipNext && !isListenTogetherGuest) 1f else 0.35f),
                 modifier = Modifier.size(26.dp),
             )
