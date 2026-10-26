@@ -893,6 +893,16 @@
     <string name="beat_theme_orange_blue">Arancio e blu</string>
     <string name="beat_theme_racing_red">Rosso corsa</string>
     <string name="beat_theme_silver">Argento</string>
+    <string name="beat_theme_ocean">Oceano</string>
+    <string name="beat_theme_neon_pink">Rosa neon</string>
+    <string name="beat_theme_lime">Lime</string>
+    <string name="beat_theme_amber">Ambra</string>
+    <string name="beat_theme_ice">Ghiaccio</string>
+    <string name="beat_theme_midnight">Mezzanotte</string>
+    <string name="beat_theme_custom">Personalizzato</string>
+    <string name="beat_custom_color_1">Primo colore</string>
+    <string name="beat_custom_color_2">Secondo colore</string>
+    <string name="beat_custom_apply">Usa questo tema</string>
     <string name="beat_suggestions">Suggerimenti</string>
     <string name="beat_suggestions_subtitle">Artisti simili, generi, epoche e altro</string>
 </resources>

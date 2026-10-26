@@ -8,11 +8,16 @@ package com.metrolist.music.ui.theme
 import androidx.annotation.StringRes
 import androidx.compose.material3.ColorScheme
 import androidx.compose.ui.graphics.Color
+import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import com.metrolist.music.R
 
 /** Selected "And the beat goes on" theme, stored by [BeatTheme.id]. */
 val BeatThemeKey = stringPreferencesKey("beatTheme")
+
+/** The two colors of the "Personalizzato" theme, stored as ARGB ints. */
+val BeatCustomColorAKey = intPreferencesKey("beatCustomColorA")
+val BeatCustomColorBKey = intPreferencesKey("beatCustomColorB")
 
 /**
  * Hand-tuned dark themes. [seed] drives the Material color scheme; [background], [surface]
@@ -123,11 +128,96 @@ object BeatThemes {
         gradient = listOf(Color(0xFF5B2DFF), Color(0xFFE040FB)),
     )
 
-    val All = listOf(NightBlue, Cover, Sunset, Emerald, Purple, RedGold, OrangeBlue, RacingRed, Silver)
+    val Ocean = BeatTheme(
+        id = "oceano",
+        nameRes = R.string.beat_theme_ocean,
+        seed = Color(0xFF00B4D8),
+        accent = Color(0xFF48CAE4),
+        background = Color(0xFF041218),
+        surface = Color(0xFF0B2029),
+        gradient = listOf(Color(0xFF0077B6), Color(0xFF00D4C8)),
+    )
+
+    val NeonPink = BeatTheme(
+        id = "rosa_neon",
+        nameRes = R.string.beat_theme_neon_pink,
+        seed = Color(0xFFFF3D9A),
+        accent = Color(0xFFFF6FB5),
+        background = Color(0xFF14060F),
+        surface = Color(0xFF26101E),
+        gradient = listOf(Color(0xFFFF2E93), Color(0xFF7B2CFF)),
+    )
+
+    val Lime = BeatTheme(
+        id = "lime",
+        nameRes = R.string.beat_theme_lime,
+        seed = Color(0xFF9BE15D),
+        accent = Color(0xFFB8F27C),
+        background = Color(0xFF0B1206),
+        surface = Color(0xFF17220F),
+        gradient = listOf(Color(0xFF9BE15D), Color(0xFF00C27A)),
+    )
+
+    val Amber = BeatTheme(
+        id = "ambra",
+        nameRes = R.string.beat_theme_amber,
+        seed = Color(0xFFFFB020),
+        accent = Color(0xFFFFC94D),
+        background = Color(0xFF140E04),
+        surface = Color(0xFF241A0B),
+        gradient = listOf(Color(0xFFFFB020), Color(0xFFE2541B)),
+    )
+
+    val Ice = BeatTheme(
+        id = "ghiaccio",
+        nameRes = R.string.beat_theme_ice,
+        seed = Color(0xFF8EC5FF),
+        accent = Color(0xFFB5DAFF),
+        background = Color(0xFF080D14),
+        surface = Color(0xFF131B26),
+        gradient = listOf(Color(0xFFB5DAFF), Color(0xFF5E7CE2)),
+    )
+
+    val Midnight = BeatTheme(
+        id = "mezzanotte",
+        nameRes = R.string.beat_theme_midnight,
+        seed = Color(0xFF3F51B5),
+        accent = Color(0xFF7986FF),
+        background = Color(0xFF05060F),
+        surface = Color(0xFF10132A),
+        gradient = listOf(Color(0xFF1A237E), Color(0xFF00897B)),
+    )
+
+    const val CUSTOM_ID = "personalizzato"
+    val DefaultCustomA = Color(0xFFFF5E62)
+    val DefaultCustomB = Color(0xFF6A5CFF)
+
+    /** "Personalizzato": the user's two colors drive the gradient, accent and the tint of the surfaces. */
+    fun custom(a: Color, b: Color): BeatTheme = BeatTheme(
+        id = CUSTOM_ID,
+        nameRes = R.string.beat_theme_custom,
+        seed = a,
+        accent = lerpColor(a, Color.White, 0.25f),
+        background = lerpColor(Color(0xFF07080C), a, 0.07f),
+        surface = lerpColor(Color(0xFF14161D), a, 0.12f),
+        gradient = listOf(a, b),
+    )
+
+    val All = listOf(
+        NightBlue, Cover, Sunset, Emerald, Purple, RedGold, OrangeBlue, RacingRed, Silver,
+        Ocean, NeonPink, Lime, Amber, Ice, Midnight,
+    )
 
     val Default = NightBlue
 
     fun byId(id: String?): BeatTheme = All.firstOrNull { it.id == id } ?: Default
+
+    fun resolve(id: String?, customA: Int?, customB: Int?): BeatTheme =
+        if (id == CUSTOM_ID) {
+            custom(customA?.let { Color(it) } ?: DefaultCustomA, customB?.let { Color(it) } ?: DefaultCustomB)
+        } else {
+            byId(id)
+        }
 }
 
 /** Applies the theme's deep background and surfaces on top of a generated dark scheme. */
@@ -149,7 +239,7 @@ fun ColorScheme.withBeatTheme(theme: BeatTheme, pureBlack: Boolean): ColorScheme
     )
 }
 
-private fun lerpColor(a: Color, b: Color, t: Float) = Color(
+internal fun lerpColor(a: Color, b: Color, t: Float) = Color(
     red = a.red + (b.red - a.red) * t,
     green = a.green + (b.green - a.green) * t,
     blue = a.blue + (b.blue - a.blue) * t,

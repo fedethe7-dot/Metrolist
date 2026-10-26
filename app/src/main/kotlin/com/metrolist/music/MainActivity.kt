@@ -196,6 +196,8 @@ import com.metrolist.music.ui.screens.settings.DarkMode
 import com.metrolist.music.ui.screens.settings.NavigationTab
 import androidx.datastore.preferences.core.edit
 import com.metrolist.music.ui.theme.BeatThemeKey
+import com.metrolist.music.ui.theme.BeatCustomColorAKey
+import com.metrolist.music.ui.theme.BeatCustomColorBKey
 import com.metrolist.music.ui.component.BeatThemePickerDialog
 import com.metrolist.music.ui.theme.BeatThemes
 import com.metrolist.music.ui.theme.ColorSaver
@@ -610,7 +612,11 @@ class MainActivity : FragmentActivity() {
             }
         }
         val beatThemeId by rememberPreference(BeatThemeKey, defaultValue = BeatThemes.Default.id)
-        val beatTheme = remember(beatThemeId) { BeatThemes.byId(beatThemeId) }
+        val beatCustomA by rememberPreference(BeatCustomColorAKey, defaultValue = BeatThemes.DefaultCustomA.toArgb())
+        val beatCustomB by rememberPreference(BeatCustomColorBKey, defaultValue = BeatThemes.DefaultCustomB.toArgb())
+        val beatTheme = remember(beatThemeId, beatCustomA, beatCustomB) {
+            BeatThemes.resolve(beatThemeId, beatCustomA, beatCustomB)
+        }
         // A fixed beat theme keeps its colors; only "Dalla copertina" follows the song.
         val enableDynamicTheme = beatTheme.followsCover
 
@@ -1044,9 +1050,20 @@ class MainActivity : FragmentActivity() {
                 if (showBeatThemePicker) {
                     BeatThemePickerDialog(
                         selectedId = beatThemeId,
+                        customA = Color(beatCustomA),
+                        customB = Color(beatCustomB),
                         onSelect = { theme ->
                             lifecycleScope.launch(Dispatchers.IO) {
                                 dataStore.edit { it[BeatThemeKey] = theme.id }
+                            }
+                        },
+                        onSaveCustom = { a, b ->
+                            lifecycleScope.launch(Dispatchers.IO) {
+                                dataStore.edit {
+                                    it[BeatCustomColorAKey] = a.toArgb()
+                                    it[BeatCustomColorBKey] = b.toArgb()
+                                    it[BeatThemeKey] = BeatThemes.CUSTOM_ID
+                                }
                             }
                         },
                         onDismiss = { showBeatThemePicker = false },

@@ -1011,6 +1011,16 @@
     <string name="beat_theme_orange_blue">Orange and blue</string>
     <string name="beat_theme_racing_red">Racing red</string>
     <string name="beat_theme_silver">Silver</string>
+    <string name="beat_theme_ocean">Ocean</string>
+    <string name="beat_theme_neon_pink">Neon pink</string>
+    <string name="beat_theme_lime">Lime</string>
+    <string name="beat_theme_amber">Amber</string>
+    <string name="beat_theme_ice">Ice</string>
+    <string name="beat_theme_midnight">Midnight</string>
+    <string name="beat_theme_custom">Custom</string>
+    <string name="beat_custom_color_1">First color</string>
+    <string name="beat_custom_color_2">Second color</string>
+    <string name="beat_custom_apply">Use this theme</string>
     <string name="beat_suggestions">Suggestions</string>
     <string name="beat_suggestions_subtitle">Similar artists, genres, eras and more</string>
 </resources>
