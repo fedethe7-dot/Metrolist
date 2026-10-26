@@ -529,7 +529,7 @@ private fun BeatMiniControls(
         }
         val playLabel = stringResource(
             when {
-                isListenTogetherGuest -> if (isMuted) R.string.beat_unmute else R.string.beat_mute
+                isListenTogetherGuest -> if (isMuted) R.string.unmute else R.string.mute
                 effectiveIsPlaying && playbackState != Player.STATE_ENDED -> R.string.pause
                 else -> R.string.play
             },

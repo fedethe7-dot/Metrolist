@@ -46,7 +46,7 @@ fun MetrolistTheme(
         val beatScheme = remember(generated, beatTheme, pureBlack) {
             generated.withBeatTheme(beatTheme, pureBlack)
         }
-        MaterialTheme(colorScheme = beatScheme, content = content)
+        MaterialTheme(colorScheme = beatScheme, typography = BeatTypography, content = content)
         return
     }
 
@@ -80,6 +80,7 @@ fun MetrolistTheme(
     // Use standard MaterialTheme instead of MaterialExpressiveTheme
     MaterialTheme(
         colorScheme = colorScheme,
+        typography = BeatTypography,
         content = content,
     )
 }
