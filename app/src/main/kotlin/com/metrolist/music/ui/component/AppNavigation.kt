@@ -148,12 +148,12 @@ fun AppNavigationBar(
     val haptics = LocalHapticFeedback.current
     val viewConfiguration = LocalViewConfiguration.current
 
-    // Beat: no bar of its own, the page fades into the background under the tabs.
+    // Beat: no bar of its own; the background is almost solid so text scrolling underneath stays hidden.
     NavigationBar(
         modifier = modifier.background(
             Brush.verticalGradient(
-                0f to Color.Transparent,
-                0.35f to base.copy(alpha = 0.9f),
+                0f to base.copy(alpha = 0.88f),
+                0.2f to base.copy(alpha = 0.98f),
                 1f to base,
             ),
         ),
