@@ -846,8 +846,8 @@ class MainActivity : FragmentActivity() {
 
                 val topLevelScreens =
                     remember {
+                        // The Beat home draws its own header (avatar and filters), like the library and search tabs.
                         listOf(
-                            Screens.Home.route,
                             Screens.Library.route,
                             Screens.ListenTogether.route,
                             "settings",
@@ -1127,7 +1127,7 @@ class MainActivity : FragmentActivity() {
                         !(pauseListenHistory && eventCount == 0)
                     }
 
-                val baseBg = if (pureBlack) Color.Black else MaterialTheme.colorScheme.surfaceContainer
+                val baseBg = if (pureBlack) Color.Black else MaterialTheme.colorScheme.background
                 val artistNameAliases by ArtistNameAliases.aliases.collectAsStateWithLifecycle()
 
                 CompositionLocalProvider(

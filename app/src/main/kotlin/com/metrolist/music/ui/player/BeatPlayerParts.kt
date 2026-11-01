@@ -165,7 +165,7 @@ fun BeatRoundButton(
         label = "beatButtonScale",
     )
     val styledContainer = when (look.style) {
-        BeatStyle.CLASSIC -> containerColor
+        BeatStyle.CLASSIC -> if (primary) containerColor else Color.Transparent
         BeatStyle.GLASS -> if (primary) Color.White else Color.White.copy(alpha = 0.06f + 0.14f * look.glassOpacity)
         BeatStyle.NEON -> if (primary) look.accent.copy(alpha = 0.16f) else Color(0xFF0A0E17)
         BeatStyle.BENTO -> if (primary) Color.White else Color(0xFF1C1C1F)

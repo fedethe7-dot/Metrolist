@@ -388,6 +388,11 @@ private fun NewMiniPlayer(
         val progressTrackColor = onSurfaceColor.copy(alpha = 0.15f)
         val look = LocalBeatLook.current
         val haze = LocalBeatHaze.current
+        val coverTint by androidx.compose.animation.animateColorAsState(
+            targetValue = gradientColors.firstOrNull()?.let { androidx.compose.ui.graphics.lerp(it, Color.Black, 0.45f) }
+                ?: MaterialTheme.colorScheme.surfaceContainerHigh,
+            label = "miniCoverTint",
+        )
         val glassStyle = remember(look.glassBlur, look.glassOpacity, look.glassBackground) {
             HazeBlurStyle {
                 blurRadius((10f + 30f * look.glassBlur).dp)
@@ -400,7 +405,11 @@ private fun NewMiniPlayer(
         // The new styles float the mini player as a rounded bar above the content.
         val styleModifier =
             when (look.style) {
-                BeatStyle.CLASSIC -> Modifier.background(color = backgroundColor)
+                BeatStyle.CLASSIC ->
+                    Modifier
+                        .padding(horizontal = 8.dp, vertical = 6.dp)
+                        .clip(RoundedCornerShape(10.dp))
+                        .background(coverTint)
                 BeatStyle.GLASS ->
                     Modifier
                         .padding(horizontal = 10.dp, vertical = 5.dp)
@@ -428,60 +437,34 @@ private fun NewMiniPlayer(
                         drawContent()
                         val barHeight = 3.dp.toPx()
                         // Floating bars carry the progress along their bottom edge, inset from the rounded corners.
-                        val inset = if (look.isClassic) 0f else 28.dp.toPx()
-                        val top = if (look.isClassic) 0f else size.height - barHeight - 2.dp.toPx()
+                        val inset = if (look.isClassic) 16.dp.toPx() else 28.dp.toPx()
+                        val top = size.height - barHeight - (if (look.isClassic) 6.dp else 2.dp).toPx()
                         val track = size.width - inset * 2
-                        drawRect(color = progressTrackColor, topLeft = Offset(inset, top), size = Size(track, barHeight))
                         drawRect(
-                            color = if (look.style == BeatStyle.NEON) look.accent else primaryColor,
+                            color = if (look.isClassic) Color.White.copy(alpha = 0.22f) else progressTrackColor,
                             topLeft = Offset(inset, top),
-                            size = Size(track * progressState.progress.coerceIn(0f, 1f), barHeight),
+                            size = Size(track, if (look.isClassic) 2.dp.toPx() else barHeight),
+                        )
+                        drawRect(
+                            color = when {
+                                look.style == BeatStyle.NEON -> look.accent
+                                look.isClassic -> Color.White
+                                else -> primaryColor
+                            },
+                            topLeft = Offset(inset, top),
+                            size = Size(track * progressState.progress.coerceIn(0f, 1f), if (look.isClassic) 2.dp.toPx() else barHeight),
                         )
                     },
         ) {
-            if (look.isClassic) when (miniPlayerBackground) {
-                MiniPlayerBackgroundStyle.BLUR -> {
-                    if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
-                        mediaMetadata?.thumbnailUrl?.let { url ->
-                            AsyncImage(
-                                model = url,
-                                contentDescription = null,
-                                contentScale = ContentScale.Crop,
-                                modifier = Modifier
-                                    .fillMaxSize()
-                                    .blur(60.dp),
-                            )
-                            Box(
-                                Modifier
-                                    .fillMaxSize()
-                                    .background(Color.Black.copy(alpha = 0.45f)),
-                            )
-                        }
-                    }
-                }
-                MiniPlayerBackgroundStyle.GRADIENT -> {
-                    val colors = if (gradientColors.isNotEmpty()) gradientColors
-                    else listOf(
-                        MaterialTheme.colorScheme.surfaceContainer,
-                        MaterialTheme.colorScheme.surfaceContainer,
-                    )
-                    Box(
-                        Modifier
-                            .fillMaxSize()
-                            .background(Brush.horizontalGradient(colors))
-                            .background(Color.Black.copy(alpha = 0.25f)),
-                    )
-                }
-                else -> {}
-            }
+            // Beat: the bar is tinted with the cover's color instead of the old background styles.
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier.fillMaxSize().padding(start = 12.dp, end = 4.dp, top = 3.dp),
             ) {
                 Box(
                     modifier = Modifier
-                        .size(52.dp)
-                        .clip(RoundedCornerShape(10.dp))
+                        .size(if (look.isClassic) 44.dp else 52.dp)
+                        .clip(RoundedCornerShape(if (look.isClassic) 4.dp else 10.dp))
                         .background(onSurfaceColor.copy(alpha = 0.1f)),
                 ) {
                     mediaMetadata?.thumbnailUrl?.let { url ->
@@ -523,6 +506,8 @@ private fun NewMiniPlayer(
                     contentColor = onSurfaceColor,
                     listenTogetherManager = listenTogetherManager,
                     neonAccent = if (look.style == BeatStyle.NEON) look.accent else null,
+                    songId = mediaMetadata?.id,
+                    plain = look.isClassic,
                 )
             }
         }
@@ -543,24 +528,29 @@ private fun BeatMiniControls(
     contentColor: Color,
     listenTogetherManager: ListenTogetherManager?,
     neonAccent: Color? = null,
+    songId: String? = null,
+    plain: Boolean = false,
 ) {
+    val database = LocalDatabase.current
+    val librarySong by remember(songId) { database.song(songId ?: "") }.collectAsStateWithLifecycle(initialValue = null)
+    val isLiked = librarySong?.song?.liked == true
     val isPlaying by playerConnection.isPlaying.collectAsState()
     val castIsPlaying by castHandler?.castIsPlaying?.collectAsState() ?: remember { mutableStateOf(false) }
     val effectiveIsPlaying = if (isCasting) castIsPlaying else isPlaying
     val isListenTogetherGuest = listenTogetherManager?.let { it.isInRoom && !it.isHost } ?: false
     val isMuted by playerConnection.isMuted.collectAsStateWithLifecycle()
 
+    // Like Spotify: heart and play/pause; swipe the bar to change song.
     Row(verticalAlignment = Alignment.CenterVertically) {
-        IconButton(
-            onClick = { playerConnection.seekToPrevious() },
-            enabled = canSkipPrevious && !isListenTogetherGuest,
-        ) {
-            Icon(
-                painter = painterResource(R.drawable.skip_previous),
-                contentDescription = stringResource(R.string.previous),
-                tint = contentColor.copy(alpha = if (canSkipPrevious && !isListenTogetherGuest) 1f else 0.35f),
-                modifier = Modifier.size(26.dp),
-            )
+        if (songId != null) {
+            IconButton(onClick = { playerConnection.service.toggleLike() }) {
+                Icon(
+                    painter = painterResource(if (isLiked) R.drawable.favorite else R.drawable.favorite_border),
+                    contentDescription = stringResource(R.string.action_like),
+                    tint = if (isLiked) MaterialTheme.colorScheme.primary else contentColor,
+                    modifier = Modifier.size(24.dp),
+                )
+            }
         }
         val playIcon = when {
             isListenTogetherGuest -> if (isMuted) R.drawable.volume_off else R.drawable.volume_up
@@ -580,7 +570,9 @@ private fun BeatMiniControls(
             modifier = Modifier
                 .size(48.dp)
                 .then(
-                    if (neonAccent != null) {
+                    if (plain) {
+                        Modifier.clip(CircleShape)
+                    } else if (neonAccent != null) {
                         Modifier
                             .clip(RoundedCornerShape(12.dp))
                             .background(neonAccent.copy(alpha = 0.16f))
@@ -608,19 +600,13 @@ private fun BeatMiniControls(
             Icon(
                 painter = painterResource(playIcon),
                 contentDescription = null,
-                tint = neonAccent ?: if (contentColor.luminance() > 0.5f) Color.Black else Color.White,
-                modifier = Modifier.size(24.dp),
-            )
-        }
-        IconButton(
-            onClick = { playerConnection.seekToNext() },
-            enabled = canSkipNext && !isListenTogetherGuest,
-        ) {
-            Icon(
-                painter = painterResource(R.drawable.skip_next),
-                contentDescription = stringResource(R.string.next),
-                tint = contentColor.copy(alpha = if (canSkipNext && !isListenTogetherGuest) 1f else 0.35f),
-                modifier = Modifier.size(26.dp),
+                tint = when {
+                    plain -> contentColor
+                    neonAccent != null -> neonAccent
+                    contentColor.luminance() > 0.5f -> Color.Black
+                    else -> Color.White
+                },
+                modifier = Modifier.size(if (plain) 30.dp else 24.dp),
             )
         }
     }

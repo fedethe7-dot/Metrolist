@@ -596,3 +596,154 @@ fun BeatSuggestionsHeader(onBack: () -> Unit) {
         )
     }
 }
+
+/** One square-ended tile in the home shortcut grid. */
+data class BeatTile(
+    val title: String,
+    val thumbnail: String?,
+    @androidx.annotation.DrawableRes val icon: Int?,
+    val onClick: () -> Unit,
+)
+
+/**
+ * Home header: account picture (opens Aspetto) and the Tutto / Musica / Mix filters.
+ * It replaces the top app bar on the home.
+ */
+@Composable
+fun BeatHomeTopBar(
+    accountImageUrl: String?,
+    selectedFilter: Int,
+    onFilterSelect: (Int) -> Unit,
+    onAvatarClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val look = LocalBeatLook.current
+    val colors = MaterialTheme.colorScheme
+    val labels = listOf(R.string.beat_filter_all, R.string.beat_filter_music, R.string.beat_filter_mixes)
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        modifier = modifier
+            .fillMaxWidth()
+            .background(if (look.isClassic) beatBackgroundColor() else look.headerColor)
+            .windowInsetsPadding(WindowInsets.systemBars.only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal))
+            .height(AppBarHeight)
+            .padding(horizontal = 16.dp),
+    ) {
+        Box(
+            contentAlignment = Alignment.Center,
+            modifier = Modifier
+                .size(36.dp)
+                .clip(androidx.compose.foundation.shape.CircleShape)
+                .background(colors.primary)
+                .clickable(onClick = onAvatarClick),
+        ) {
+            if (accountImageUrl != null) {
+                AsyncImage(
+                    model = accountImageUrl,
+                    contentDescription = stringResource(R.string.beat_appearance),
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier.fillMaxSize(),
+                )
+            } else {
+                Icon(
+                    painter = painterResource(R.drawable.palette),
+                    contentDescription = stringResource(R.string.beat_appearance),
+                    tint = colors.onPrimary,
+                    modifier = Modifier.size(20.dp),
+                )
+            }
+        }
+        labels.forEachIndexed { index, label ->
+            val selected = index == selectedFilter
+            Box(
+                contentAlignment = Alignment.Center,
+                modifier = Modifier
+                    .height(34.dp)
+                    .clip(RoundedCornerShape(17.dp))
+                    .background(if (selected) colors.primary else colors.surfaceContainerHighest)
+                    .clickable { onFilterSelect(index) }
+                    .padding(horizontal = 16.dp),
+            ) {
+                Text(
+                    text = stringResource(label),
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = if (selected) colors.onPrimary else colors.onSurface,
+                    maxLines = 1,
+                )
+            }
+        }
+    }
+}
+
+/** Two columns of quick shortcuts at the top of the home, Spotify style. */
+@Composable
+fun BeatShortcutGrid(
+    tiles: List<BeatTile>,
+    modifier: Modifier = Modifier,
+) {
+    Column(
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 8.dp),
+    ) {
+        tiles.chunked(2).forEach { row ->
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                row.forEach { tile -> BeatTileCard(tile, Modifier.weight(1f)) }
+                if (row.size == 1) Spacer(Modifier.weight(1f))
+            }
+        }
+    }
+}
+
+@Composable
+private fun BeatTileCard(
+    tile: BeatTile,
+    modifier: Modifier = Modifier,
+) {
+    val look = LocalBeatLook.current
+    val colors = MaterialTheme.colorScheme
+    val shape = RoundedCornerShape(if (look.isClassic) 6.dp else 10.dp)
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = modifier
+            .height(56.dp)
+            .beatSurface(look, shape, colors.surfaceContainerHigh)
+            .clickable(onClick = tile.onClick),
+    ) {
+        Box(
+            contentAlignment = Alignment.Center,
+            modifier = Modifier
+                .size(56.dp)
+                .background(Brush.linearGradient(listOf(colors.primary, colors.tertiary))),
+        ) {
+            if (tile.thumbnail != null) {
+                AsyncImage(
+                    model = tile.thumbnail,
+                    contentDescription = null,
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier.fillMaxSize(),
+                )
+            } else if (tile.icon != null) {
+                Icon(
+                    painter = painterResource(tile.icon),
+                    contentDescription = null,
+                    tint = Color.White,
+                    modifier = Modifier.size(24.dp),
+                )
+            }
+        }
+        Text(
+            text = tile.title,
+            fontSize = 13.sp,
+            lineHeight = 16.sp,
+            fontWeight = FontWeight.Bold,
+            color = colors.onSurface,
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.padding(horizontal = 10.dp),
+        )
+    }
+}

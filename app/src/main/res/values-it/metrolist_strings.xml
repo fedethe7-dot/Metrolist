@@ -953,4 +953,9 @@
     <string name="beat_home_mixes">Mix per te</string>
     <string name="beat_home_suggestions">Pulsante Suggerimenti</string>
     <string name="beat_reset">Ripristina aspetto</string>
+    <string name="beat_filter_all">Tutto</string>
+    <string name="beat_filter_music">Musica</string>
+    <string name="beat_filter_mixes">Mix</string>
+    <string name="beat_downloaded">Scaricati</string>
+    <string name="beat_playing_from">In riproduzione da</string>
 </resources>

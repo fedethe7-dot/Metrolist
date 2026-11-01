@@ -12,6 +12,10 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
+import androidx.compose.material3.NavigationBarItemDefaults
+import androidx.compose.foundation.background
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.unit.dp
 import androidx.compose.material3.NavigationRail
 import androidx.compose.material3.NavigationRailItem
 import androidx.compose.material3.Text
@@ -139,15 +143,23 @@ fun AppNavigationBar(
     onSearchLongClick: (() -> Unit)? = null,
     onHomeLongHold: (() -> Unit)? = null,
 ) {
-    val containerColor = if (pureBlack) Color.Black else MaterialTheme.colorScheme.surfaceContainer
+    val base = if (pureBlack) Color.Black else MaterialTheme.colorScheme.background
     val contentColor = if (pureBlack) Color.White else MaterialTheme.colorScheme.onSurfaceVariant
     val haptics = LocalHapticFeedback.current
     val viewConfiguration = LocalViewConfiguration.current
 
+    // Beat: no bar of its own, the page fades into the background under the tabs.
     NavigationBar(
-        modifier = modifier,
-        containerColor = containerColor,
-        contentColor = contentColor
+        modifier = modifier.background(
+            Brush.verticalGradient(
+                0f to Color.Transparent,
+                0.35f to base.copy(alpha = 0.9f),
+                1f to base,
+            ),
+        ),
+        containerColor = Color.Transparent,
+        contentColor = contentColor,
+        tonalElevation = 0.dp,
     ) {
         navigationItems.forEach { screen ->
             val isSelected = remember(currentRoute, screen.route) {
@@ -189,6 +201,13 @@ fun AppNavigationBar(
             }
 
             NavigationBarItem(
+                colors = NavigationBarItemDefaults.colors(
+                    selectedIconColor = MaterialTheme.colorScheme.onSurface,
+                    selectedTextColor = MaterialTheme.colorScheme.onSurface,
+                    indicatorColor = Color.Transparent,
+                    unselectedIconColor = contentColor,
+                    unselectedTextColor = contentColor,
+                ),
                 selected = isSelected,
                 onClick = {
                     if (!isSearchItem && !isHomeHoldItem) {

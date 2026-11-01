@@ -1071,4 +1071,9 @@
     <string name="beat_home_mixes">Mixes for you</string>
     <string name="beat_home_suggestions">Suggestions button</string>
     <string name="beat_reset">Reset appearance</string>
+    <string name="beat_filter_all">All</string>
+    <string name="beat_filter_music">Music</string>
+    <string name="beat_filter_mixes">Mixes</string>
+    <string name="beat_downloaded">Downloaded</string>
+    <string name="beat_playing_from">Playing from</string>
 </resources>

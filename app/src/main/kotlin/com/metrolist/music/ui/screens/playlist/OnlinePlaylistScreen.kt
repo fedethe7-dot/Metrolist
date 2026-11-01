@@ -13,6 +13,10 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.ui.draw.shadow
+import com.metrolist.music.ui.utils.resize
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
@@ -494,14 +498,37 @@ private fun OnlinePlaylistHeader(
     val database = LocalDatabase.current
     val menuState = LocalMenuState.current
     val syncUtils = LocalSyncUtils.current
+    var beatShuffle by rememberSaveable { mutableStateOf(true) }
 
     Column(
         modifier =
             modifier
                 .fillMaxWidth()
+                .background(
+                    Brush.verticalGradient(
+                        listOf(MaterialTheme.colorScheme.primary.copy(alpha = 0.32f), Color.Transparent),
+                    ),
+                )
                 .padding(top = 8.dp, bottom = 20.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
+        Surface(
+            modifier =
+                Modifier
+                    .size(216.dp)
+                    .shadow(elevation = 24.dp, shape = RoundedCornerShape(4.dp)),
+            shape = RoundedCornerShape(4.dp),
+        ) {
+            AsyncImage(
+                model = playlist.thumbnail?.resize(720, 720),
+                contentDescription = null,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier.fillMaxSize(),
+            )
+        }
+
+        Spacer(modifier = Modifier.height(18.dp))
+
         Text(
             text = playlist.title,
             style = MaterialTheme.typography.headlineMedium,
@@ -592,7 +619,7 @@ private fun OnlinePlaylistHeader(
                 Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 24.dp),
-            horizontalArrangement = Arrangement.spacedBy(16.dp, Alignment.CenterHorizontally),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             // Like Button - Smaller secondary button
@@ -658,40 +685,6 @@ private fun OnlinePlaylistHeader(
                 }
             }
 
-            // Play Button - Larger primary circular button
-            Surface(
-                onClick = {
-                    if (!isListenTogetherGuest && songs.isNotEmpty()) {
-                        // Beat: il tasto Play parte sempre in ordine casuale, solo con i brani di questa playlist
-                        playerConnection.playQueue(
-                            YouTubePlaylistQueue(
-                                playlistId = playlist.id,
-                                playlistTitle = playlist.title,
-                                initialSongs = songs,
-                                initialContinuation = continuation,
-                                startIndex = songs.indices.random(),
-                            ),
-                        )
-                        playerConnection.player.shuffleModeEnabled = true
-                    }
-                },
-                color = MaterialTheme.colorScheme.primary,
-                shape = CircleShape,
-                modifier = Modifier.size(72.dp),
-            ) {
-                Box(
-                    contentAlignment = Alignment.Center,
-                    modifier = Modifier.fillMaxSize(),
-                ) {
-                    Icon(
-                        painter = painterResource(R.drawable.play),
-                        contentDescription = stringResource(R.string.play),
-                        tint = MaterialTheme.colorScheme.onPrimary,
-                        modifier = Modifier.size(32.dp),
-                    )
-                }
-            }
-
             // Menu Button - Smaller secondary button
             Surface(
                 onClick = {
@@ -719,6 +712,54 @@ private fun OnlinePlaylistHeader(
                     )
                 }
             }
+            Spacer(Modifier.weight(1f))
+
+            // Shuffle switch next to Play, as in Spotify.
+            IconButton(onClick = { beatShuffle = !beatShuffle }) {
+                Box(contentAlignment = Alignment.Center) {
+                    Icon(
+                        painter = painterResource(R.drawable.shuffle),
+                        contentDescription = stringResource(R.string.shuffle),
+                        tint = if (beatShuffle) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.size(26.dp),
+                    )
+                }
+            }
+
+            // Play Button - Larger primary circular button
+            Surface(
+                onClick = {
+                    if (!isListenTogetherGuest && songs.isNotEmpty()) {
+                        // Beat: with the shuffle switch on, Play starts from a random song of this playlist only.
+                        playerConnection.playQueue(
+                            YouTubePlaylistQueue(
+                                playlistId = playlist.id,
+                                playlistTitle = playlist.title,
+                                initialSongs = songs,
+                                initialContinuation = continuation,
+                                startIndex = if (beatShuffle) songs.indices.random() else 0,
+                            ),
+                        )
+                        playerConnection.player.shuffleModeEnabled = beatShuffle
+                    }
+                },
+                color = MaterialTheme.colorScheme.primary,
+                shape = CircleShape,
+                modifier = Modifier.size(56.dp),
+            ) {
+                Box(
+                    contentAlignment = Alignment.Center,
+                    modifier = Modifier.fillMaxSize(),
+                ) {
+                    Icon(
+                        painter = painterResource(R.drawable.play),
+                        contentDescription = stringResource(R.string.play),
+                        tint = MaterialTheme.colorScheme.onPrimary,
+                        modifier = Modifier.size(28.dp),
+                    )
+                }
+            }
+
         }
     }
 }

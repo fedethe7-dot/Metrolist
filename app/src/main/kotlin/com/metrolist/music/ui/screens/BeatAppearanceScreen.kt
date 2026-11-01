@@ -205,6 +205,28 @@ fun BeatAppearanceScreen(onBack: () -> Unit) {
         }
 
         AppearanceSection(title = stringResource(R.string.beat_themes_title), look = look) {
+            // Quick theme switch: one tap on a circle changes the colors of the whole app.
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .horizontalScroll(rememberScrollState()),
+            ) {
+                BeatThemes.All.forEach { theme ->
+                    val selected = theme.id == themeId
+                    val swatch = theme.gradient.let { if (it.size == 1) it + it else it }
+                    Box(
+                        modifier = Modifier
+                            .size(44.dp)
+                            .clip(CircleShape)
+                            .then(if (selected) Modifier.border(3.dp, colors.onSurface, CircleShape) else Modifier)
+                            .padding(if (selected) 5.dp else 0.dp)
+                            .clip(CircleShape)
+                            .background(Brush.linearGradient(swatch))
+                            .clickable(role = Role.RadioButton) { themeId = theme.id },
+                    )
+                }
+            }
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier

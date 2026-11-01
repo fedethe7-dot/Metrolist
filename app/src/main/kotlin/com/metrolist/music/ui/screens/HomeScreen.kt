@@ -1039,11 +1039,14 @@ fun HomeScreen(
     val beatShowQuickPicks by rememberPreference(BeatHomeQuickPicksKey, defaultValue = true)
     val beatShowMixes by rememberPreference(BeatHomeMixesKey, defaultValue = true)
     val beatShowSuggestions by rememberPreference(BeatHomeSuggestionsKey, defaultValue = true)
+    // Home filters: 0 = Tutto, 1 = Musica (no mixes), 2 = Mix (only mixes).
+    var beatFilter by rememberSaveable { androidx.compose.runtime.mutableIntStateOf(0) }
 
     val homeSections =
         remember(
             beatShowQuickPicks,
             beatShowMixes,
+            beatFilter,
             randomizeHomeOrder,
             randomSeed,
             selectedChip,
@@ -1071,8 +1074,8 @@ fun HomeScreen(
             }
 
             if (!suggestionsOnly) {
-                if (beatShowQuickPicks && quickPicks?.isNotEmpty() == true) list.add(HomeSection.QuickPicks)
-                if (beatShowMixes) {
+                if (beatShowQuickPicks && beatFilter != 2 && quickPicks?.isNotEmpty() == true) list.add(HomeSection.QuickPicks)
+                if (beatShowMixes && beatFilter != 1) {
                     homePage?.sections?.indices?.filter { isMixSection(it) }?.forEach { i ->
                         list.add(HomeSection.HomePageSection(i))
                     }
@@ -1131,7 +1134,7 @@ fun HomeScreen(
         remember(accountPlaylists, savedPlaylists) { findBeatMusicPlaylist(accountPlaylists, savedPlaylists) }
 
     val washStartPx = with(LocalDensity.current) {
-        if (suggestionsOnly) 0f else WindowInsets.statusBars.getTop(this) + (AppBarHeight + BeatSearchPillHeight).toPx()
+        if (suggestionsOnly) 0f else WindowInsets.statusBars.getTop(this) + AppBarHeight.toPx()
     }
     // The non-classic styles draw their own full-screen backdrop, so the home wash is only for the classic look.
     val beatClassic = LocalBeatLook.current.isClassic
@@ -1204,7 +1207,6 @@ fun HomeScreen(
                             .asPaddingValues()
                     } else {
                         LocalPlayerAwareWindowInsets.current
-                            .add(WindowInsets(top = BeatSearchPillHeight))
                             .asPaddingValues()
                     },
             ) {
@@ -1216,13 +1218,34 @@ fun HomeScreen(
 
                 if (!suggestionsOnly && selectedChip == null && beatShowShortcuts) {
                     item(key = "beat_shortcuts") {
-                        BeatHomeShortcuts(
-                            musicPlaylist = beatMusicPlaylist,
-                            onLikedClick = { navController.navigate("auto_playlist/liked") },
-                            onMusicClick = {
-                                (beatMusicPlaylist as? BeatMusicPlaylist.Found)?.let { navController.navigate(it.route) }
-                            },
-                        )
+                        val likedTitle = stringResource(R.string.beat_liked)
+                        val downloadedTitle = stringResource(R.string.beat_downloaded)
+                        val tiles = buildList {
+                            add(BeatTile(likedTitle, null, R.drawable.favorite) { navController.navigate("auto_playlist/liked") })
+                            add(
+                                BeatTile(BEAT_MUSIC_PLAYLIST_TITLE, (beatMusicPlaylist as? BeatMusicPlaylist.Found)?.thumbnail, R.drawable.queue_music) {
+                                    (beatMusicPlaylist as? BeatMusicPlaylist.Found)?.let { navController.navigate(it.route) }
+                                },
+                            )
+                            add(BeatTile(downloadedTitle, null, R.drawable.download) { navController.navigate("auto_playlist/downloaded") })
+                            val extra = (homePage?.sections.orEmpty().flatMap { it.items } + accountPlaylists.orEmpty())
+                                .filter { it is PlaylistItem || it is AlbumItem || it is ArtistItem }
+                                .filter { it.title != BEAT_MUSIC_PLAYLIST_TITLE }
+                                .distinctBy { it.id }
+                                .take(5)
+                            extra.forEach { item ->
+                                add(
+                                    BeatTile(item.title, item.thumbnail, null) {
+                                        when (item) {
+                                            is AlbumItem -> navController.navigate("album/${item.id}")
+                                            is ArtistItem -> navController.navigate("artist/${item.id}")
+                                            else -> navController.navigate("online_playlist/${item.id}")
+                                        }
+                                    },
+                                )
+                            }
+                        }
+                        BeatShortcutGrid(tiles = tiles)
                     }
                 }
 
@@ -2672,8 +2695,11 @@ fun HomeScreen(
             )
 
             // Search stays pinned at the top while the home scrolls, following the top bar when it hides.
-            if (!suggestionsOnly) BeatHomeSearchHeader(
-                onClick = { beatSearchOpen = true },
+            if (!suggestionsOnly) BeatHomeTopBar(
+                accountImageUrl = url,
+                selectedFilter = beatFilter,
+                onFilterSelect = { beatFilter = it },
+                onAvatarClick = { navController.navigate(BEAT_APPEARANCE_ROUTE) },
                 modifier = Modifier.align(Alignment.TopCenter),
             )
         }

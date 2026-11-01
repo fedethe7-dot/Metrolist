@@ -1123,7 +1123,7 @@ fun BottomSheetPlayer(
                                     shape = shareShape,
                                     colors =
                                         IconButtonDefaults.filledIconButtonColors(
-                                            containerColor = TextBackgroundColor.copy(alpha = 0.14f),
+                                            containerColor = Color.Transparent,
                                             contentColor = TextBackgroundColor,
                                         ),
                                     modifier = Modifier.size(48.dp),
@@ -1151,7 +1151,7 @@ fun BottomSheetPlayer(
                                     shape = shareShape,
                                     colors =
                                         IconButtonDefaults.filledIconButtonColors(
-                                            containerColor = TextBackgroundColor.copy(alpha = 0.14f),
+                                            containerColor = Color.Transparent,
                                             contentColor = TextBackgroundColor,
                                         ),
                                     modifier = Modifier.size(48.dp),
@@ -1189,7 +1189,7 @@ fun BottomSheetPlayer(
                                     shape = favShape,
                                     colors =
                                         IconButtonDefaults.filledIconButtonColors(
-                                            containerColor = TextBackgroundColor.copy(alpha = 0.14f),
+                                            containerColor = Color.Transparent,
                                             contentColor = TextBackgroundColor,
                                         ),
                                     modifier = Modifier.size(48.dp),
@@ -1209,7 +1209,7 @@ fun BottomSheetPlayer(
                                     shape = favShape,
                                     colors =
                                         IconButtonDefaults.filledIconButtonColors(
-                                            containerColor = TextBackgroundColor.copy(alpha = 0.14f),
+                                            containerColor = Color.Transparent,
                                             contentColor = TextBackgroundColor,
                                         ),
                                     modifier = Modifier.size(48.dp),
