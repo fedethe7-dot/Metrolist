@@ -899,6 +899,15 @@
     <string name="beat_theme_amber">Ambra</string>
     <string name="beat_theme_ice">Ghiaccio</string>
     <string name="beat_theme_midnight">Mezzanotte</string>
+    <string name="beat_theme_gym_violet">Palestra viola</string>
+    <string name="beat_theme_gym_green">Palestra verde</string>
+    <string name="beat_theme_gym_blue">Palestra blu</string>
+    <string name="beat_theme_gym_orange">Palestra arancio</string>
+    <string name="beat_theme_gym_aurora">Palestra aurora</string>
+    <string name="beat_theme_gym_pink">Palestra rosa</string>
+    <string name="beat_theme_gym_red">Palestra rosso</string>
+    <string name="beat_theme_gym_gold">Palestra oro</string>
+    <string name="beat_theme_gym_cyan">Palestra ciano</string>
     <string name="beat_theme_custom">Personalizzato</string>
     <string name="beat_custom_color_1">Primo colore</string>
     <string name="beat_custom_color_2">Secondo colore</string>

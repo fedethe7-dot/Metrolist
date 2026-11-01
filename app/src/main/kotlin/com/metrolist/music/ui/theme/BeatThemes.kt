@@ -188,6 +188,97 @@ object BeatThemes {
         gradient = listOf(Color(0xFF1A237E), Color(0xFF00897B)),
     )
 
+    // Stessa base blu notte e sfumatura a due colori della web app Palestra
+    val GymViolet = BeatTheme(
+        id = "palestra_viola",
+        nameRes = R.string.beat_theme_gym_violet,
+        seed = Color(0xFF6366F1),
+        accent = Color(0xFF6366F1),
+        background = Color(0xFF0A0F1C),
+        surface = Color(0xFF172033),
+        gradient = listOf(Color(0xFF6366F1), Color(0xFF8B5CF6)),
+    )
+
+    val GymGreen = BeatTheme(
+        id = "palestra_verde",
+        nameRes = R.string.beat_theme_gym_green,
+        seed = Color(0xFF10B981),
+        accent = Color(0xFF10B981),
+        background = Color(0xFF0A0F1C),
+        surface = Color(0xFF172033),
+        gradient = listOf(Color(0xFF10B981), Color(0xFF14B8A6)),
+    )
+
+    val GymBlue = BeatTheme(
+        id = "palestra_blu",
+        nameRes = R.string.beat_theme_gym_blue,
+        seed = Color(0xFF3B82F6),
+        accent = Color(0xFF3B82F6),
+        background = Color(0xFF0A0F1C),
+        surface = Color(0xFF172033),
+        gradient = listOf(Color(0xFF3B82F6), Color(0xFF06B6D4)),
+    )
+
+    val GymOrange = BeatTheme(
+        id = "palestra_arancio",
+        nameRes = R.string.beat_theme_gym_orange,
+        seed = Color(0xFFF97316),
+        accent = Color(0xFFF97316),
+        background = Color(0xFF0A0F1C),
+        surface = Color(0xFF172033),
+        gradient = listOf(Color(0xFFF97316), Color(0xFFEF4444)),
+    )
+
+    val GymAurora = BeatTheme(
+        id = "palestra_aurora",
+        nameRes = R.string.beat_theme_gym_aurora,
+        seed = Color(0xFFC084FC),
+        accent = Color(0xFFC084FC),
+        background = Color(0xFF120B18),
+        surface = Color(0xFF1F1528),
+        gradient = listOf(Color(0xFFC084FC), Color(0xFFF472B6)),
+    )
+
+    val GymPink = BeatTheme(
+        id = "palestra_rosa",
+        nameRes = R.string.beat_theme_gym_pink,
+        seed = Color(0xFFEC4899),
+        accent = Color(0xFFEC4899),
+        background = Color(0xFF0A0F1C),
+        surface = Color(0xFF172033),
+        gradient = listOf(Color(0xFFEC4899), Color(0xFFF43F5E)),
+    )
+
+    val GymRed = BeatTheme(
+        id = "palestra_rosso",
+        nameRes = R.string.beat_theme_gym_red,
+        seed = Color(0xFFEF4444),
+        accent = Color(0xFFEF4444),
+        background = Color(0xFF0A0F1C),
+        surface = Color(0xFF172033),
+        gradient = listOf(Color(0xFFEF4444), Color(0xFFB91C1C)),
+    )
+
+    val GymGold = BeatTheme(
+        id = "palestra_oro",
+        nameRes = R.string.beat_theme_gym_gold,
+        seed = Color(0xFFEAB308),
+        accent = Color(0xFFEAB308),
+        background = Color(0xFF0A0F1C),
+        surface = Color(0xFF172033),
+        gradient = listOf(Color(0xFFEAB308), Color(0xFFF59E0B)),
+    )
+
+    val GymCyan = BeatTheme(
+        id = "palestra_ciano",
+        nameRes = R.string.beat_theme_gym_cyan,
+        seed = Color(0xFF06B6D4),
+        accent = Color(0xFF06B6D4),
+        background = Color(0xFF0A0F1C),
+        surface = Color(0xFF172033),
+        gradient = listOf(Color(0xFF06B6D4), Color(0xFF6366F1)),
+    )
+
     const val CUSTOM_ID = "personalizzato"
     val DefaultCustomA = Color(0xFFFF5E62)
     val DefaultCustomB = Color(0xFF6A5CFF)
@@ -206,6 +297,8 @@ object BeatThemes {
     val All = listOf(
         NightBlue, Cover, Sunset, Emerald, Purple, RedGold, OrangeBlue, RacingRed, Silver,
         Ocean, NeonPink, Lime, Amber, Ice, Midnight,
+        GymViolet, GymGreen, GymBlue, GymOrange, GymAurora,
+        GymPink, GymRed, GymGold, GymCyan,
     )
 
     val Default = NightBlue

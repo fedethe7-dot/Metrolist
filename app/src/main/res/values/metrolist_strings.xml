@@ -1017,6 +1017,15 @@
     <string name="beat_theme_amber">Amber</string>
     <string name="beat_theme_ice">Ice</string>
     <string name="beat_theme_midnight">Midnight</string>
+    <string name="beat_theme_gym_violet">Gym violet</string>
+    <string name="beat_theme_gym_green">Gym green</string>
+    <string name="beat_theme_gym_blue">Gym blue</string>
+    <string name="beat_theme_gym_orange">Gym orange</string>
+    <string name="beat_theme_gym_aurora">Gym aurora</string>
+    <string name="beat_theme_gym_pink">Gym pink</string>
+    <string name="beat_theme_gym_red">Gym red</string>
+    <string name="beat_theme_gym_gold">Gym gold</string>
+    <string name="beat_theme_gym_cyan">Gym cyan</string>
     <string name="beat_theme_custom">Custom</string>
     <string name="beat_custom_color_1">First color</string>
     <string name="beat_custom_color_2">Second color</string>
