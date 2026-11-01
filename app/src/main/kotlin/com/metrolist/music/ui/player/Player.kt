@@ -1542,6 +1542,7 @@ fun BottomSheetPlayer(
                                 iconSize = 34.dp,
                                 containerColor = textButtonColor,
                                 contentColor = iconButtonColor,
+                                primary = true,
                                 modifier = Modifier.focusRequester(focusRequester),
                                 onClick = {
                                     if (isListenTogetherGuest) {

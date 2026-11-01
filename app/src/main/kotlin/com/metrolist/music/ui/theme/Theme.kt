@@ -33,8 +33,12 @@ fun MetrolistTheme(
     pureBlack: Boolean = false,
     themeColor: Color = DefaultThemeColor,
     beatTheme: BeatTheme? = null,
+    beatStyle: BeatStyle = BeatStyle.CLASSIC,
+    beatFont: BeatFont = BeatFont.NUNITO,
     content: @Composable () -> Unit,
 ) {
+    val typography = remember(beatFont) { if (beatFont == BeatFont.NUNITO) BeatTypography else beatTypography(beatFont.family()) }
+    val shapes = remember(beatStyle) { beatShapes(beatStyle) }
     if (beatTheme != null && darkTheme) {
         val seed = if (beatTheme.followsCover) themeColor else beatTheme.seed
         val generated = rememberDynamicColorScheme(
@@ -43,10 +47,10 @@ fun MetrolistTheme(
             specVersion = ColorSpec.SpecVersion.SPEC_2025,
             style = PaletteStyle.Vibrant,
         )
-        val beatScheme = remember(generated, beatTheme, pureBlack) {
-            generated.withBeatTheme(beatTheme, pureBlack)
+        val beatScheme = remember(generated, beatTheme, pureBlack, beatStyle) {
+            generated.withBeatTheme(beatTheme, pureBlack).withBeatStyle(beatStyle, pureBlack)
         }
-        MaterialTheme(colorScheme = beatScheme, typography = BeatTypography, content = content)
+        MaterialTheme(colorScheme = beatScheme, typography = typography, shapes = shapes, content = content)
         return
     }
 
@@ -80,7 +84,8 @@ fun MetrolistTheme(
     // Use standard MaterialTheme instead of MaterialExpressiveTheme
     MaterialTheme(
         colorScheme = colorScheme,
-        typography = BeatTypography,
+        typography = typography,
+        shapes = shapes,
         content = content,
     )
 }

@@ -11,6 +11,13 @@ import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.lerp
+import com.metrolist.music.ui.theme.BeatNeonLine
+import com.metrolist.music.ui.theme.BeatStyle
+import com.metrolist.music.ui.theme.LocalBeatLook
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
@@ -56,6 +63,58 @@ fun BeatGlowBackground(
     val glow = colors[0]
     val secondGlow = colors.getOrElse(1) { glow }
     val base = colors.getOrElse(2) { Color.Black }
+    val look = LocalBeatLook.current
+    if (look.style == BeatStyle.NEON) {
+        // Black room with a lit grid; the cover's color only glows behind the artwork.
+        Box(
+            modifier = modifier.drawBehind {
+                drawRect(Color(0xFF05060B))
+                val step = 28.dp.toPx()
+                val line = glow.copy(alpha = 0.07f)
+                var x = 0f
+                while (x < size.width) {
+                    drawLine(line, Offset(x, 0f), Offset(x, size.height), 1f)
+                    x += step
+                }
+                var y = 0f
+                while (y < size.height) {
+                    drawLine(line, Offset(0f, y), Offset(size.width, y), 1f)
+                    y += step
+                }
+                drawRect(
+                    Brush.radialGradient(
+                        colors = listOf(glow.copy(alpha = 0.32f), Color.Transparent),
+                        center = Offset(size.width * 0.5f, size.height * 0.3f),
+                        radius = size.width * 0.8f,
+                    ),
+                )
+                drawRect(
+                    Brush.radialGradient(
+                        colors = listOf(look.accent.copy(alpha = 0.16f), Color.Transparent),
+                        center = Offset(size.width * 0.5f, size.height),
+                        radius = size.width * 0.75f,
+                    ),
+                )
+            },
+        )
+        return
+    }
+    if (look.style == BeatStyle.BENTO) {
+        // Solid color from the cover at the top, fading to pure black where the controls are.
+        Box(
+            modifier = modifier.drawBehind {
+                drawRect(Color.Black)
+                drawRect(
+                    Brush.verticalGradient(
+                        0f to lerp(glow, Color.Black, 0.15f),
+                        0.45f to lerp(base, Color.Black, 0.5f),
+                        0.72f to Color.Black,
+                    ),
+                )
+            },
+        )
+        return
+    }
     Box(
         modifier = modifier.drawBehind {
             drawRect(base)
@@ -95,7 +154,9 @@ fun BeatRoundButton(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
+    primary: Boolean = false,
 ) {
+    val look = LocalBeatLook.current
     val interactionSource = remember { MutableInteractionSource() }
     val pressed by interactionSource.collectIsPressedAsState()
     val scale by animateFloatAsState(
@@ -103,19 +164,47 @@ fun BeatRoundButton(
         animationSpec = spring(dampingRatio = 0.5f, stiffness = Spring.StiffnessMedium),
         label = "beatButtonScale",
     )
-    val container by animateColorAsState(containerColor, label = "beatButtonContainer")
+    val styledContainer = when (look.style) {
+        BeatStyle.CLASSIC -> containerColor
+        BeatStyle.GLASS -> if (primary) Color.White else Color.White.copy(alpha = 0.06f + 0.14f * look.glassOpacity)
+        BeatStyle.NEON -> if (primary) look.accent.copy(alpha = 0.16f) else Color(0xFF0A0E17)
+        BeatStyle.BENTO -> if (primary) Color.White else Color(0xFF1C1C1F)
+    }
+    val styledContent = when (look.style) {
+        BeatStyle.CLASSIC -> contentColor
+        BeatStyle.NEON -> if (primary) look.accent else Color.White
+        else -> if (primary) Color(0xFF111111) else Color.White
+    }
+    val shape = if (look.style == BeatStyle.NEON) RoundedCornerShape(if (primary) 20.dp else 16.dp) else CircleShape
+    val container by animateColorAsState(styledContainer, label = "beatButtonContainer")
     Box(
         contentAlignment = Alignment.Center,
         modifier = modifier
             .size(size)
             .scale(scale)
-            .clip(CircleShape)
+            .then(
+                if (look.style == BeatStyle.NEON && primary) {
+                    Modifier.shadow(20.dp, shape, clip = false, ambientColor = look.accent, spotColor = look.accent)
+                } else {
+                    Modifier
+                },
+            )
+            .clip(shape)
             .background(container)
+            .then(
+                when {
+                    look.style == BeatStyle.NEON ->
+                        Modifier.border(if (primary) 1.5.dp else 1.dp, if (primary) look.accent else BeatNeonLine, shape)
+                    look.style == BeatStyle.GLASS && !primary ->
+                        Modifier.border(1.dp, Color.White.copy(alpha = 0.28f), shape)
+                    else -> Modifier
+                },
+            )
             .alpha(if (enabled) 1f else 0.4f)
             .semantics { contentDescription = label }
             .clickable(
                 interactionSource = interactionSource,
-                indication = ripple(color = contentColor),
+                indication = ripple(color = styledContent),
                 enabled = enabled,
                 role = Role.Button,
                 onClick = onClick,
@@ -124,7 +213,7 @@ fun BeatRoundButton(
         Icon(
             painter = painterResource(icon),
             contentDescription = null,
-            tint = contentColor,
+            tint = styledContent,
             modifier = Modifier.size(iconSize),
         )
     }

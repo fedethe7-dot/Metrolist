@@ -5,6 +5,11 @@
 
 package com.metrolist.music.ui.screens
 
+import com.metrolist.music.ui.theme.BeatHomeMixesKey
+import com.metrolist.music.ui.theme.BeatHomeQuickPicksKey
+import com.metrolist.music.ui.theme.BeatHomeShortcutsKey
+import com.metrolist.music.ui.theme.BeatHomeSuggestionsKey
+import com.metrolist.music.ui.theme.LocalBeatLook
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.ExperimentalFoundationApi
@@ -1030,8 +1035,15 @@ fun HomeScreen(
         )
     }
 
+    val beatShowShortcuts by rememberPreference(BeatHomeShortcutsKey, defaultValue = true)
+    val beatShowQuickPicks by rememberPreference(BeatHomeQuickPicksKey, defaultValue = true)
+    val beatShowMixes by rememberPreference(BeatHomeMixesKey, defaultValue = true)
+    val beatShowSuggestions by rememberPreference(BeatHomeSuggestionsKey, defaultValue = true)
+
     val homeSections =
         remember(
+            beatShowQuickPicks,
+            beatShowMixes,
             randomizeHomeOrder,
             randomSeed,
             selectedChip,
@@ -1059,9 +1071,11 @@ fun HomeScreen(
             }
 
             if (!suggestionsOnly) {
-                if (quickPicks?.isNotEmpty() == true) list.add(HomeSection.QuickPicks)
-                homePage?.sections?.indices?.filter { isMixSection(it) }?.forEach { i ->
-                    list.add(HomeSection.HomePageSection(i))
+                if (beatShowQuickPicks && quickPicks?.isNotEmpty() == true) list.add(HomeSection.QuickPicks)
+                if (beatShowMixes) {
+                    homePage?.sections?.indices?.filter { isMixSection(it) }?.forEach { i ->
+                        list.add(HomeSection.HomePageSection(i))
+                    }
                 }
             } else {
                 if (!chipActive && dailyDiscover?.isNotEmpty() == true) list.add(HomeSection.DailyDiscover)
@@ -1119,8 +1133,10 @@ fun HomeScreen(
     val washStartPx = with(LocalDensity.current) {
         if (suggestionsOnly) 0f else WindowInsets.statusBars.getTop(this) + (AppBarHeight + BeatSearchPillHeight).toPx()
     }
-    val washTop = MaterialTheme.colorScheme.primary.copy(alpha = 0.30f)
-    val washMid = MaterialTheme.colorScheme.tertiary.copy(alpha = 0.12f)
+    // The non-classic styles draw their own full-screen backdrop, so the home wash is only for the classic look.
+    val beatClassic = LocalBeatLook.current.isClassic
+    val washTop = if (beatClassic) MaterialTheme.colorScheme.primary.copy(alpha = 0.30f) else Color.Transparent
+    val washMid = if (beatClassic) MaterialTheme.colorScheme.tertiary.copy(alpha = 0.12f) else Color.Transparent
     PullToRefreshBox(
         modifier =
             Modifier.drawBehind {
@@ -1198,7 +1214,7 @@ fun HomeScreen(
                     }
                 }
 
-                if (!suggestionsOnly && selectedChip == null) {
+                if (!suggestionsOnly && selectedChip == null && beatShowShortcuts) {
                     item(key = "beat_shortcuts") {
                         BeatHomeShortcuts(
                             musicPlaylist = beatMusicPlaylist,
@@ -2519,7 +2535,7 @@ fun HomeScreen(
                     }
                 }
 
-                if (!suggestionsOnly) {
+                if (!suggestionsOnly && beatShowSuggestions) {
                     item(key = "beat_suggestions_button") {
                         BeatSuggestionsButton(onClick = { navController.navigate(BEAT_SUGGESTIONS_ROUTE) })
                     }

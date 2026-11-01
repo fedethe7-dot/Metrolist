@@ -81,6 +81,10 @@ fun NavGraphBuilder.navigationBuilder(
         HomeScreen(snackbarHostState = snackbarHostState, suggestionsOnly = true)
     }
 
+    composable(BEAT_APPEARANCE_ROUTE) {
+        BeatAppearanceScreen(onBack = { navController.navigateUp() })
+    }
+
     composable(Screens.Search.route) { backStackEntry ->
         val pureBlackEnabled by rememberPreference(PureBlackKey, defaultValue = false)
         val darkTheme by rememberEnumPreference(DarkModeKey, defaultValue = DarkMode.AUTO)

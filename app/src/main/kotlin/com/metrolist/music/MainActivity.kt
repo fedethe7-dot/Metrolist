@@ -200,6 +200,29 @@ import com.metrolist.music.ui.theme.BeatCustomColorAKey
 import com.metrolist.music.ui.theme.BeatCustomColorBKey
 import com.metrolist.music.ui.component.BeatThemePickerDialog
 import com.metrolist.music.ui.theme.BeatThemes
+import com.metrolist.music.ui.theme.BEAT_DEFAULT_GLASS_BLUR
+import com.metrolist.music.ui.theme.BEAT_DEFAULT_GLASS_OPACITY
+import com.metrolist.music.ui.theme.BEAT_DEFAULT_TEXT_SCALE
+import com.metrolist.music.ui.theme.BeatFont
+import com.metrolist.music.ui.theme.BeatFontKey
+import com.metrolist.music.ui.theme.BeatGlassBlurKey
+import com.metrolist.music.ui.theme.BeatGlassOpacityKey
+import com.metrolist.music.ui.theme.BeatLook
+import com.metrolist.music.ui.theme.BeatSpeed
+import com.metrolist.music.ui.theme.BeatSpeedKey
+import com.metrolist.music.ui.theme.BeatStyle
+import com.metrolist.music.ui.theme.BeatStyleKey
+import com.metrolist.music.ui.theme.BeatTextScaleKey
+import com.metrolist.music.ui.theme.BeatTransition
+import com.metrolist.music.ui.theme.BeatTransitionKey
+import com.metrolist.music.ui.theme.LocalBeatHaze
+import com.metrolist.music.ui.theme.LocalBeatLook
+import com.metrolist.music.ui.theme.beatBackdrop
+import com.metrolist.music.ui.theme.beatEnterTransition
+import com.metrolist.music.ui.theme.beatExitTransition
+import com.metrolist.music.ui.screens.BEAT_APPEARANCE_ROUTE
+import dev.chrisbanes.haze.hazeSource
+import dev.chrisbanes.haze.rememberHazeState
 import com.metrolist.music.ui.theme.ColorSaver
 import com.metrolist.music.ui.theme.DefaultThemeColor
 import com.metrolist.music.ui.theme.MetrolistTheme
@@ -619,6 +642,14 @@ class MainActivity : FragmentActivity() {
         }
         // A fixed beat theme keeps its colors; only "Dalla copertina" follows the song.
         val enableDynamicTheme = beatTheme.followsCover
+        val beatStyle by rememberEnumPreference(BeatStyleKey, defaultValue = BeatStyle.CLASSIC)
+        val beatFont by rememberEnumPreference(BeatFontKey, defaultValue = BeatFont.NUNITO)
+        val beatTextScale by rememberPreference(BeatTextScaleKey, defaultValue = BEAT_DEFAULT_TEXT_SCALE)
+        val beatGlassBlur by rememberPreference(BeatGlassBlurKey, defaultValue = BEAT_DEFAULT_GLASS_BLUR)
+        val beatGlassOpacity by rememberPreference(BeatGlassOpacityKey, defaultValue = BEAT_DEFAULT_GLASS_OPACITY)
+        val beatTransition by rememberEnumPreference(BeatTransitionKey, defaultValue = BeatTransition.SLIDE)
+        val beatSpeed by rememberEnumPreference(BeatSpeedKey, defaultValue = BeatSpeed.NORMAL)
+        val beatHaze = rememberHazeState()
 
         val darkTheme by rememberEnumPreference(DarkModeKey, defaultValue = DarkMode.AUTO)
         val isSystemInDarkTheme = isSystemInDarkTheme()
@@ -707,6 +738,8 @@ class MainActivity : FragmentActivity() {
             pureBlack = pureBlack,
             themeColor = themeColor,
             beatTheme = beatTheme,
+            beatStyle = beatStyle,
+            beatFont = beatFont,
         ) {
             val currentDensity = LocalDensity.current
             val windowInfo = LocalWindowInfo.current
@@ -726,19 +759,36 @@ class MainActivity : FragmentActivity() {
                         1.0f
                     }
                 }
-            val scaledDensity: Density = remember(currentDensity, landscapeDensityScale, userDensityScale) {
+            val scaledDensity: Density = remember(currentDensity, landscapeDensityScale, userDensityScale, beatTextScale) {
                 Density(
                     density = currentDensity.density * landscapeDensityScale * userDensityScale,
-                    fontScale = currentDensity.fontScale,
+                    fontScale = currentDensity.fontScale * beatTextScale,
                 )
             }
 
-            CompositionLocalProvider(LocalDensity provides scaledDensity) {
+            val schemeForLook = MaterialTheme.colorScheme
+            val beatLook = remember(beatStyle, beatTheme, schemeForLook, pureBlack, beatGlassBlur, beatGlassOpacity, beatSpeed) {
+                BeatLook(
+                    style = beatStyle,
+                    accent = if (beatTheme.followsCover) schemeForLook.primary else beatTheme.gradient.first(),
+                    accent2 = if (beatTheme.followsCover) schemeForLook.tertiary else beatTheme.gradient.last(),
+                    base = if (pureBlack) Color.Black else schemeForLook.surface,
+                    glassBlur = beatGlassBlur,
+                    glassOpacity = beatGlassOpacity,
+                    speed = beatSpeed,
+                )
+            }
+
+            CompositionLocalProvider(
+                LocalDensity provides scaledDensity,
+                LocalBeatLook provides beatLook,
+                LocalBeatHaze provides beatHaze,
+            ) {
             BoxWithConstraints(
                 modifier =
                     Modifier
                         .fillMaxSize()
-                        .background(if (pureBlack) Color.Black else MaterialTheme.colorScheme.surface),
+                        .beatBackdrop(beatLook),
             ) {
                 val density = LocalDensity.current
                 val configuration = LocalWindowInfo.current
@@ -1100,6 +1150,7 @@ class MainActivity : FragmentActivity() {
 
                     Scaffold(
                         snackbarHost = { SnackbarHost(snackbarHostState) },
+                        containerColor = if (beatLook.isClassic) MaterialTheme.colorScheme.background else Color.Transparent,
                         topBar = {
                             AnimatedVisibility(
                                 visible = shouldShowTopBar,
@@ -1116,7 +1167,7 @@ class MainActivity : FragmentActivity() {
                                         },
                                         actions = {
                                             if (currentRoute == Screens.Home.route) {
-                                                IconButton(onClick = { showBeatThemePicker = true }) {
+                                                IconButton(onClick = { navController.navigate(BEAT_APPEARANCE_ROUTE) }) {
                                                     Icon(
                                                         painter = painterResource(R.drawable.palette),
                                                         contentDescription = stringResource(R.string.beat_themes_title),
@@ -1173,9 +1224,15 @@ class MainActivity : FragmentActivity() {
                                         scrollBehavior = topAppBarScrollBehavior,
                                         colors =
                                             TopAppBarDefaults.topAppBarColors(
-                                                containerColor = if (pureBlack) Color.Black else MaterialTheme.colorScheme.background,
+                                                containerColor = when {
+                                                    !beatLook.isClassic && currentRoute == Screens.Home.route -> beatLook.headerColor
+                                                    !beatLook.isClassic -> Color.Transparent
+                                                    pureBlack -> Color.Black
+                                                    else -> MaterialTheme.colorScheme.background
+                                                },
                                                 // On the home the search header sits right under the bar: keep one solid colour.
                                                 scrolledContainerColor = when {
+                                                    !beatLook.isClassic && currentRoute == Screens.Home.route -> beatLook.headerColor
                                                     pureBlack -> Color.Black
                                                     currentRoute == Screens.Home.route -> MaterialTheme.colorScheme.background
                                                     else -> MaterialTheme.colorScheme.surfaceContainer
@@ -1399,7 +1456,11 @@ class MainActivity : FragmentActivity() {
                                     onHomeLongHold = { showAccountDialog = true },
                                 )
                             }
-                            Box(Modifier.weight(1f)) {
+                            Box(
+                                Modifier
+                                    .weight(1f)
+                                    .then(if (beatLook.style == BeatStyle.GLASS) Modifier.hazeSource(beatHaze) else Modifier),
+                            ) {
                                 // NavHost with animations (Material 3 Expressive style)
                                 NavHost(
                                     navController = navController,
@@ -1413,41 +1474,41 @@ class MainActivity : FragmentActivity() {
                                         val currentRouteIndex = routeIndexMap[targetState.destination.route] ?: -1
                                         val previousRouteIndex = routeIndexMap[initialState.destination.route] ?: -1
 
-                                        if (currentRouteIndex == -1 || currentRouteIndex > previousRouteIndex) {
-                                            slideInHorizontally { it / 8 } + fadeIn(tween(200))
-                                        } else {
-                                            slideInHorizontally { -it / 8 } + fadeIn(tween(200))
-                                        }
+                                        beatEnterTransition(
+                                            beatTransition,
+                                            beatSpeed,
+                                            forward = currentRouteIndex == -1 || currentRouteIndex > previousRouteIndex,
+                                        )
                                     },
                                     exitTransition = {
                                         val currentRouteIndex = routeIndexMap[initialState.destination.route] ?: -1
                                         val targetRouteIndex = routeIndexMap[targetState.destination.route] ?: -1
 
-                                        if (targetRouteIndex == -1 || targetRouteIndex > currentRouteIndex) {
-                                            slideOutHorizontally { -it / 8 } + fadeOut(tween(200))
-                                        } else {
-                                            slideOutHorizontally { it / 8 } + fadeOut(tween(200))
-                                        }
+                                        beatExitTransition(
+                                            beatTransition,
+                                            beatSpeed,
+                                            forward = targetRouteIndex == -1 || targetRouteIndex > currentRouteIndex,
+                                        )
                                     },
                                     popEnterTransition = {
                                         val currentRouteIndex = routeIndexMap[targetState.destination.route] ?: -1
                                         val previousRouteIndex = routeIndexMap[initialState.destination.route] ?: -1
 
-                                        if (previousRouteIndex != -1 && previousRouteIndex < currentRouteIndex) {
-                                            slideInHorizontally { it / 8 } + fadeIn(tween(200))
-                                        } else {
-                                            slideInHorizontally { -it / 8 } + fadeIn(tween(200))
-                                        }
+                                        beatEnterTransition(
+                                            beatTransition,
+                                            beatSpeed,
+                                            forward = previousRouteIndex != -1 && previousRouteIndex < currentRouteIndex,
+                                        )
                                     },
                                     popExitTransition = {
                                         val currentRouteIndex = routeIndexMap[initialState.destination.route] ?: -1
                                         val targetRouteIndex = routeIndexMap[targetState.destination.route] ?: -1
 
-                                        if (currentRouteIndex != -1 && currentRouteIndex < targetRouteIndex) {
-                                            slideOutHorizontally { -it / 8 } + fadeOut(tween(200))
-                                        } else {
-                                            slideOutHorizontally { it / 8 } + fadeOut(tween(200))
-                                        }
+                                        beatExitTransition(
+                                            beatTransition,
+                                            beatSpeed,
+                                            forward = currentRouteIndex != -1 && currentRouteIndex < targetRouteIndex,
+                                        )
                                     },
                                     modifier = Modifier.nestedScroll(topAppBarScrollBehavior.nestedScrollConnection),
                                 ) {

@@ -90,6 +90,10 @@ import com.metrolist.music.ui.screens.settings.DarkMode
 import com.metrolist.music.utils.SearchRoutes
 import com.metrolist.music.utils.rememberEnumPreference
 import com.metrolist.music.utils.rememberPreference
+import com.metrolist.music.ui.theme.BeatStyle
+import com.metrolist.music.ui.theme.LocalBeatLook
+import com.metrolist.music.ui.theme.beatBackdrop
+import com.metrolist.music.ui.theme.beatSurface
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -150,10 +154,11 @@ fun BeatHomeSearchHeader(
     modifier: Modifier = Modifier,
 ) {
     val topBarOffset = LocalTopBarHeightOffset.current
+    val look = LocalBeatLook.current
     Box(
         modifier = modifier
             .fillMaxWidth()
-            .background(beatBackgroundColor())
+            .background(if (look.isClassic) beatBackgroundColor() else look.headerColor)
             .windowInsetsPadding(WindowInsets.systemBars.only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal))
             .layout { measurable, constraints ->
                 val barSpace = (AppBarHeight.toPx() + topBarOffset()).roundToInt().coerceAtLeast(0)
@@ -234,8 +239,11 @@ fun BeatHomeSearchPill(
             .fillMaxWidth()
             .padding(horizontal = 16.dp, vertical = 8.dp)
             .height(52.dp)
-            .clip(RoundedCornerShape(26.dp))
-            .background(MaterialTheme.colorScheme.surfaceContainerHighest)
+            .beatSurface(
+                look = LocalBeatLook.current,
+                shape = RoundedCornerShape(if (LocalBeatLook.current.style == BeatStyle.NEON) 14.dp else 26.dp),
+                fallback = MaterialTheme.colorScheme.surfaceContainerHighest,
+            )
             .clickable(onClick = onClick)
             .padding(horizontal = 18.dp),
     ) {
@@ -310,11 +318,24 @@ private fun BeatShortcutCard(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val look = LocalBeatLook.current
+    val shape = look.cardShape()
     Box(
         modifier = modifier
-            .height(112.dp)
-            .clip(RoundedCornerShape(22.dp))
-            .background(brush)
+            .height(if (look.style == BeatStyle.BENTO) 124.dp else 112.dp)
+            .then(
+                when (look.style) {
+                    BeatStyle.CLASSIC, BeatStyle.BENTO -> Modifier.clip(shape).background(brush)
+                    BeatStyle.GLASS ->
+                        Modifier
+                            .beatSurface(look, shape, Color.Transparent, emphasis = true)
+                            .background(brush, alpha = 0.4f)
+                    BeatStyle.NEON ->
+                        Modifier
+                            .beatSurface(look, shape, Color.Transparent, emphasis = true)
+                            .background(brush, alpha = 0.22f)
+                },
+            )
             .clickable(onClick = onClick),
     ) {
         if (imageUrl != null) {
@@ -416,7 +437,13 @@ fun BeatHomeSearchOverlay(onClose: () -> Unit) {
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(if (pureBlack) Color.Black else MaterialTheme.colorScheme.background)
+            .then(
+                if (LocalBeatLook.current.isClassic) {
+                    Modifier.background(if (pureBlack) Color.Black else MaterialTheme.colorScheme.background)
+                } else {
+                    Modifier.beatBackdrop(LocalBeatLook.current)
+                },
+            )
             .windowInsetsPadding(
                 LocalPlayerAwareWindowInsets.current.only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal),
             ),
@@ -427,8 +454,11 @@ fun BeatHomeSearchOverlay(onClose: () -> Unit) {
                 .fillMaxWidth()
                 .padding(horizontal = 16.dp, vertical = 8.dp)
                 .height(52.dp)
-                .clip(RoundedCornerShape(26.dp))
-                .background(MaterialTheme.colorScheme.surfaceContainerHighest)
+                .beatSurface(
+                    look = LocalBeatLook.current,
+                    shape = RoundedCornerShape(if (LocalBeatLook.current.style == BeatStyle.NEON) 14.dp else 26.dp),
+                    fallback = MaterialTheme.colorScheme.surfaceContainerHighest,
+                )
                 .padding(horizontal = 4.dp),
         ) {
             IconButton(onClick = onClose) {
@@ -497,13 +527,21 @@ fun BeatHomeSearchOverlay(onClose: () -> Unit) {
 @Composable
 fun BeatSuggestionsButton(onClick: () -> Unit) {
     val colors = MaterialTheme.colorScheme
+    val look = LocalBeatLook.current
     Row(
         verticalAlignment = Alignment.CenterVertically,
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp, vertical = 16.dp)
-            .clip(RoundedCornerShape(22.dp))
-            .background(Brush.linearGradient(listOf(colors.primary.copy(alpha = 0.35f), colors.tertiary.copy(alpha = 0.25f))))
+            .then(
+                if (look.isClassic) {
+                    Modifier
+                        .clip(RoundedCornerShape(22.dp))
+                        .background(Brush.linearGradient(listOf(colors.primary.copy(alpha = 0.35f), colors.tertiary.copy(alpha = 0.25f))))
+                } else {
+                    Modifier.beatSurface(look, look.cardShape(), colors.surfaceContainerHigh)
+                },
+            )
             .clickable(onClick = onClick)
             .padding(horizontal = 18.dp, vertical = 18.dp),
     ) {

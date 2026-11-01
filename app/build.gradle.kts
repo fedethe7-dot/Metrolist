@@ -275,6 +275,8 @@ dependencies {
     implementation(libs.appcompat)
 
     implementation(libs.coil)
+    implementation(libs.haze)
+    implementation(libs.haze.blur)
     implementation(libs.coil.network.okhttp)
     implementation(libs.browser)
 
