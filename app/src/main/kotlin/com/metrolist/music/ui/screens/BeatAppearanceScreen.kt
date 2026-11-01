@@ -74,6 +74,7 @@ import com.metrolist.music.ui.theme.BeatSpeed
 import com.metrolist.music.ui.theme.BeatSpeedKey
 import com.metrolist.music.ui.theme.BeatStyle
 import com.metrolist.music.ui.theme.BeatStyleKey
+import com.metrolist.music.ui.theme.BeatTextScaleKey
 import com.metrolist.music.ui.theme.BeatThemeKey
 import com.metrolist.music.ui.theme.BeatThemes
 import com.metrolist.music.ui.theme.BeatTransition
