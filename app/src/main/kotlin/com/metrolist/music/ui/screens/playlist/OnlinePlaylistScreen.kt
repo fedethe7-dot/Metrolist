@@ -687,14 +687,17 @@ private fun OnlinePlaylistHeader(
             Surface(
                 onClick = {
                     if (!isListenTogetherGuest && songs.isNotEmpty()) {
+                        // Beat: il tasto Play parte sempre in ordine casuale, solo con i brani di questa playlist
                         playerConnection.playQueue(
                             YouTubePlaylistQueue(
                                 playlistId = playlist.id,
                                 playlistTitle = playlist.title,
                                 initialSongs = songs,
                                 initialContinuation = continuation,
+                                startIndex = songs.indices.random(),
                             ),
                         )
+                        playerConnection.player.shuffleModeEnabled = true
                     }
                 },
                 color = MaterialTheme.colorScheme.primary,
