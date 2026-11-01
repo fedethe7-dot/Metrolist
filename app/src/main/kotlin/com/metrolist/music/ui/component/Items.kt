@@ -1127,7 +1127,6 @@ fun YouTubeListItem(
     isActive: Boolean = false,
     isPlaying: Boolean = false,
     isSwipeable: Boolean = true,
-    showThumbnail: Boolean = true,
     trailingContent: @Composable RowScope.() -> Unit = {},
     badges: @Composable RowScope.() -> Unit = {
         val database = LocalDatabase.current
@@ -1203,7 +1202,7 @@ fun YouTubeListItem(
             },
             badges = badges,
             thumbnailContent = {
-                if (showThumbnail) ItemThumbnail(
+                ItemThumbnail(
                     thumbnailUrl = item.thumbnail,
                     albumIndex = albumIndex,
                     isSelected = isSelected,

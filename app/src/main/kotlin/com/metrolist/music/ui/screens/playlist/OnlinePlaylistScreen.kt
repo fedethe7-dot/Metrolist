@@ -272,7 +272,6 @@ fun OnlinePlaylistScreen(
 
                         YouTubeListItem(
                             item = songItem,
-                            showThumbnail = false,
                             isActive = mediaMetadata?.id == songItem.id,
                             isPlaying = isPlaying,
                             isSelected = inSelectMode && songItem.id in selection,
