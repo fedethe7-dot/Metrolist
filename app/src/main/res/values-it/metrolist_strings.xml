@@ -958,4 +958,10 @@
     <string name="beat_filter_mixes">Mix</string>
     <string name="beat_downloaded">Scaricati</string>
     <string name="beat_playing_from">In riproduzione da</string>
+    <string name="beat_dislike">Non mi piace</string>
+    <string name="beat_dislike_done">Non sentirai più questo brano</string>
+    <string name="beat_dislike_undone">Brano ripristinato</string>
+    <string name="beat_disliked_songs">Brani che non ti piacciono</string>
+    <string name="beat_disliked_count">%d brani nascosti</string>
+    <string name="beat_disliked_restore">Ripristina tutti</string>
 </resources>

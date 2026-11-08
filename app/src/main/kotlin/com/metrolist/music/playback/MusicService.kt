@@ -137,6 +137,7 @@ import com.metrolist.music.discord.DiscordTemplateRenderer
 import com.metrolist.music.discord.PresenceStatus
 import com.metrolist.music.constants.EnableLastFMScrobblingKey
 import com.metrolist.music.constants.EnableSongCacheKey
+import com.metrolist.music.constants.DislikedSongsKey
 import com.metrolist.music.constants.HideExplicitKey
 import com.metrolist.music.constants.HideVideoSongsKey
 import com.metrolist.music.constants.HistoryDuration
@@ -202,6 +203,7 @@ import com.metrolist.music.playback.queues.ListQueue
 import com.metrolist.music.playback.queues.Queue
 import com.metrolist.music.playback.queues.YouTubeQueue
 import com.metrolist.music.playback.queues.YouTubePlaylistQueue
+import com.metrolist.music.playback.queues.filterDisliked
 import com.metrolist.music.playback.queues.filterExplicit
 import com.metrolist.music.playback.queues.filterVideoSongs
 import com.metrolist.music.constants.LoudnessLevel
@@ -343,6 +345,7 @@ class MusicService :
     var queueTitle: String? = null
 
     val currentMediaMetadata = MutableStateFlow<com.metrolist.music.models.MediaMetadata?>(null)
+    val dislikedSongIds = MutableStateFlow<Set<String>>(emptySet())
     private val currentSong =
         currentMediaMetadata
             .flatMapLatest { mediaMetadata ->
@@ -1173,6 +1176,9 @@ class MusicService :
             dataStore.data.map { it[HideExplicitKey] ?: false }.distinctUntilChanged().collect { cachedHideExplicit = it }
         }
         scope.launch {
+            dataStore.data.map { it[DislikedSongsKey] ?: emptySet() }.distinctUntilChanged().collect { dislikedSongIds.value = it }
+        }
+        scope.launch {
             dataStore.data.map { it[HideVideoSongsKey] ?: false }.distinctUntilChanged().collect { cachedHideVideoSongs = it }
         }
         scope.launch {
@@ -1813,6 +1819,7 @@ class MusicService :
                         .getInitialStatus()
                         .filterExplicit(dataStore.get(HideExplicitKey, false))
                         .filterVideoSongs(dataStore.get(HideVideoSongsKey, false))
+                        .filterDisliked(dislikedSongIds.value)
                 }
             if (queue.preloadItem != null && player.playbackState == STATE_IDLE) return@launch
             if (initialStatus.title != null) {
@@ -1933,6 +1940,7 @@ class MusicService :
                                     .map { it.toMediaItem() }
                                     .filterExplicit(cachedHideExplicit)
                                     .filterVideoSongs(cachedHideVideoSongs)
+                                    .filterDisliked(dislikedSongIds.value)
 
                             if (radioItems.isNotEmpty()) {
                                 val itemCount = player.mediaItemCount
@@ -2213,6 +2221,49 @@ class MusicService :
                 }
                 currentMediaMetadata.value = player.currentMetadata
             }
+        }
+    }
+
+    fun toggleDislike() {
+        val mediaId = player.currentMediaItem?.mediaId ?: return
+        val nowDisliked = mediaId !in dislikedSongIds.value
+        dislikedSongIds.value =
+            if (nowDisliked) dislikedSongIds.value + mediaId else dislikedSongIds.value - mediaId
+        scope.launch {
+            safeDataStoreEdit { settings ->
+                val saved = settings[DislikedSongsKey].orEmpty()
+                settings[DislikedSongsKey] = if (nowDisliked) saved + mediaId else saved - mediaId
+            }
+        }
+        Toast
+            .makeText(
+                this,
+                getString(if (nowDisliked) R.string.beat_dislike_done else R.string.beat_dislike_undone),
+                Toast.LENGTH_SHORT,
+            ).show()
+        if (!nowDisliked) return
+
+        scope.launch {
+            val song = database.song(mediaId).first()?.song ?: return@launch
+            if (song.liked && !song.isEpisode) {
+                val unliked = song.toggleLike(syncToYouTube = false)
+                database.query {
+                    update(unliked)
+                    syncUtils.likeSong(unliked)
+                }
+            }
+        }
+
+        val currentIndex = player.currentMediaItemIndex
+        for (i in player.mediaItemCount - 1 downTo 0) {
+            if (i != currentIndex && player.getMediaItemAt(i).mediaId == mediaId) {
+                player.removeMediaItem(i)
+            }
+        }
+        if (player.mediaItemCount > 1) {
+            player.removeMediaItem(player.currentMediaItemIndex)
+        } else {
+            player.pause()
         }
     }
 
@@ -2526,6 +2577,15 @@ class MusicService :
         mediaItem: MediaItem?,
         reason: Int,
     ) {
+        // A disliked song reached by autoplay or skipping is dropped; one the user tapped still plays.
+        if (mediaItem != null &&
+            reason != Player.MEDIA_ITEM_TRANSITION_REASON_PLAYLIST_CHANGED &&
+            mediaItem.mediaId in dislikedSongIds.value &&
+            player.mediaItemCount > 1
+        ) {
+            player.removeMediaItem(player.currentMediaItemIndex)
+            return
+        }
         // Only natural completion transitions mark the previous track as fully cached,
         // never a manual skip or seek. Read lastTransitionedMediaId before replacing it.
         if (reason == Player.MEDIA_ITEM_TRANSITION_REASON_AUTO ||
@@ -2609,6 +2669,7 @@ class MusicService :
                             .nextPage()
                             .filterExplicit(cachedHideExplicit)
                             .filterVideoSongs(cachedHideVideoSongs)
+                            .filterDisliked(dislikedSongIds.value)
                     }
                 if (player.playbackState != STATE_IDLE && mediaItems.isNotEmpty()) {
                     player.addMediaItems(mediaItems)

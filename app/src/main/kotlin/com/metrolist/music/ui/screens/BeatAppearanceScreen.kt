@@ -55,6 +55,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.metrolist.music.LocalPlayerAwareWindowInsets
 import com.metrolist.music.R
+import com.metrolist.music.constants.DislikedSongsKey
 import com.metrolist.music.ui.component.BeatThemePickerDialog
 import com.metrolist.music.ui.theme.BEAT_DEFAULT_GLASS_BLUR
 import com.metrolist.music.ui.theme.BEAT_DEFAULT_GLASS_OPACITY
@@ -140,6 +141,7 @@ fun BeatAppearanceScreen(onBack: () -> Unit) {
     var themeId by rememberPreference(BeatThemeKey, defaultValue = BeatThemes.Default.id)
     var customA by rememberPreference(BeatCustomColorAKey, defaultValue = BeatThemes.DefaultCustomA.toArgb())
     var customB by rememberPreference(BeatCustomColorBKey, defaultValue = BeatThemes.DefaultCustomB.toArgb())
+    var dislikedIds by rememberPreference(DislikedSongsKey, defaultValue = emptySet<String>())
 
     // Sliders move freely and save once released, so the whole app is not redrawn at every step.
     var textScale by remember { mutableFloatStateOf(savedTextScale) }
@@ -354,6 +356,24 @@ fun BeatAppearanceScreen(onBack: () -> Unit) {
             SwitchRow(stringResource(R.string.beat_home_quick_picks), showQuickPicks) { showQuickPicks = it }
             SwitchRow(stringResource(R.string.beat_home_mixes), showMixes) { showMixes = it }
             SwitchRow(stringResource(R.string.beat_home_suggestions), showSuggestions) { showSuggestions = it }
+        }
+
+        AppearanceSection(title = stringResource(R.string.beat_disliked_songs), look = look) {
+            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+                Text(
+                    text = stringResource(R.string.beat_disliked_count, dislikedIds.size),
+                    style = MaterialTheme.typography.bodyLarge,
+                    modifier = Modifier.weight(1f),
+                )
+                if (dislikedIds.isNotEmpty()) {
+                    AppearanceChip(
+                        text = stringResource(R.string.beat_disliked_restore),
+                        selected = false,
+                        look = look,
+                        onClick = { dislikedIds = emptySet() },
+                    )
+                }
+            }
         }
 
         Box(

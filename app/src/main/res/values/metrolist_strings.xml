@@ -1076,4 +1076,10 @@
     <string name="beat_filter_mixes">Mixes</string>
     <string name="beat_downloaded">Downloaded</string>
     <string name="beat_playing_from">Playing from</string>
+    <string name="beat_dislike">Don\'t like</string>
+    <string name="beat_dislike_done">You won\'t hear this song again</string>
+    <string name="beat_dislike_undone">Song restored</string>
+    <string name="beat_disliked_songs">Songs you don\'t like</string>
+    <string name="beat_disliked_count">%d hidden songs</string>
+    <string name="beat_disliked_restore">Restore all</string>
 </resources>

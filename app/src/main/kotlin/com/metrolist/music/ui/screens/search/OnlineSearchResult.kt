@@ -163,11 +163,6 @@ fun OnlineSearchResult(
     val hideVideoSongs by rememberPreference(HideVideoSongsKey, defaultValue = false)
     val autoRadioQueue by rememberPreference(AutoRadioQueueKey, defaultValue = true)
 
-    BackHandler(enabled = isSearchFocused) {
-        isSearchFocused = false
-        focusManager.clearFocus()
-    }
-
     // Extract query from navigation arguments
     val encodedQuery = navController.currentBackStackEntry?.arguments?.getString("query") ?: ""
     val decodedQuery = remember(encodedQuery) { SearchRoutes.decodeQuery(encodedQuery) }
@@ -200,13 +195,33 @@ fun OnlineSearchResult(
             }
         }
 
-    // Erasing the search brings back the real home instead of an empty results page.
+    // Back arrow / system back with an empty field return to the real home.
     val goHome: () -> Unit = {
         isSearchFocused = false
         focusManager.clearFocus()
         keyboardController?.hide()
         if (!navController.popBackStack(Screens.Home.route, inclusive = false)) {
             navController.navigateUp()
+        }
+    }
+
+    // Like Spotify: erasing keeps you in search with the keyboard open; only back leaves.
+    val clearQuery: () -> Unit = {
+        query = TextFieldValue("")
+        isSearchFocused = true
+        try {
+            focusRequester.requestFocus()
+            keyboardController?.show()
+        } catch (e: Exception) {
+        }
+    }
+
+    BackHandler(enabled = isSearchFocused) {
+        if (query.text.isBlank()) {
+            goHome()
+        } else {
+            isSearchFocused = false
+            focusManager.clearFocus()
         }
     }
 
@@ -383,9 +398,8 @@ fun OnlineSearchResult(
         OutlinedTextField(
             value = query,
             onValueChange = { newQuery ->
-                val erased = newQuery.text.isEmpty() && query.text.isNotEmpty()
                 query = newQuery
-                if (erased) goHome()
+                if (newQuery.text.isEmpty()) isSearchFocused = true
             },
             placeholder = {
                 Text(
@@ -396,7 +410,7 @@ fun OnlineSearchResult(
             },
             leadingIcon = {
                 IconButton(
-                    onClick = { navController.navigateUp() },
+                    onClick = goHome,
                 ) {
                     Icon(
                         painter = painterResource(R.drawable.arrow_back),
@@ -408,10 +422,7 @@ fun OnlineSearchResult(
             trailingIcon = {
                 if (query.text.isNotEmpty()) {
                     IconButton(
-                        onClick = {
-                            query = TextFieldValue("")
-                            goHome()
-                        },
+                        onClick = clearQuery,
                     ) {
                         Icon(
                             painter = painterResource(R.drawable.close),
@@ -572,11 +583,7 @@ fun OnlineSearchResult(
             if (isSearchFocused) {
                 OnlineSearchScreen(
                     query = query.text,
-                    onQueryChange = {
-                        val erased = it.text.isEmpty() && query.text.isNotEmpty()
-                        query = it
-                        if (erased) goHome()
-                    },
+                    onQueryChange = { query = it },
                     onSearch = onSearch,
                     onDismiss = {
                         isSearchFocused = false

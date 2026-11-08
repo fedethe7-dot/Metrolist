@@ -30,6 +30,13 @@ interface Queue {
         fun filterVideoSongs(disableVideos: Boolean = false) =
             if (disableVideos) filterItems { it.metadata?.isVideoSong != true } else this
 
+        // The song the user picked stays, even if disliked: only the others are dropped.
+        fun filterDisliked(dislikedIds: Set<String>): Status {
+            if (dislikedIds.isEmpty()) return this
+            val startId = items.getOrNull(mediaItemIndex)?.mediaId
+            return filterItems { it.mediaId == startId || it.mediaId !in dislikedIds }
+        }
+
         // Keeps mediaItemIndex on the same song; if that song is removed, starts at the next kept one.
         private fun filterItems(keep: (MediaItem) -> Boolean): Status {
             val filtered = items.filter(keep)
@@ -44,6 +51,9 @@ interface Queue {
         }
     }
 }
+
+fun List<MediaItem>.filterDisliked(dislikedIds: Set<String>) =
+    if (dislikedIds.isEmpty()) this else filterNot { it.mediaId in dislikedIds }
 
 fun List<MediaItem>.filterExplicit(enabled: Boolean = true) =
     if (enabled) {

@@ -1165,6 +1165,30 @@ fun BottomSheetPlayer(
                             }
                         }
 
+                        if (!showInlineLyrics && currentSong?.song?.isEpisode != true) {
+                            val dislikedIds by playerConnection.service.dislikedSongIds.collectAsStateWithLifecycle()
+                            val isDisliked = mediaMetadata.id in dislikedIds
+                            FilledIconButton(
+                                onClick = playerConnection::toggleDislike,
+                                shape = favShape,
+                                colors =
+                                    IconButtonDefaults.filledIconButtonColors(
+                                        containerColor = Color.Transparent,
+                                        contentColor = TextBackgroundColor,
+                                    ),
+                                modifier = Modifier.size(48.dp),
+                            ) {
+                                Icon(
+                                    painter =
+                                        painterResource(
+                                            if (isDisliked) R.drawable.thumb_down else R.drawable.thumb_down_outline,
+                                        ),
+                                    contentDescription = stringResource(R.string.beat_dislike),
+                                    modifier = Modifier.size(24.dp),
+                                )
+                            }
+                        }
+
                         AnimatedContent(targetState = showInlineLyrics, label = "LikeButton") { showLyrics ->
                             if (showLyrics) {
                                 val currentLyrics by playerConnection.currentLyrics.collectAsStateWithLifecycle(initialValue = null)
