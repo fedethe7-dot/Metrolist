@@ -1082,4 +1082,6 @@
     <string name="beat_disliked_songs">Songs you don\'t like</string>
     <string name="beat_disliked_count">%d hidden songs</string>
     <string name="beat_disliked_restore">Restore all</string>
+    <string name="beat_genre_mixes">Mixes by genre</string>
+    <string name="beat_genre_mix_subtitle">Your songs + new ones</string>
 </resources>

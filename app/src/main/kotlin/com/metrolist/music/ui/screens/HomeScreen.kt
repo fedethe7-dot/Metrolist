@@ -1249,6 +1249,12 @@ fun HomeScreen(
                     }
                 }
 
+                if (!suggestionsOnly && selectedChip == null && beatShowMixes && beatFilter != 1) {
+                    item(key = "beat_genre_mixes") {
+                        BeatGenreMixRow(modifier = Modifier.padding(vertical = 8.dp))
+                    }
+                }
+
                 if (suggestionsOnly) item {
                     ChipsRow(
                         chips = homePage?.chips?.map { it to it.title } ?: emptyList(),

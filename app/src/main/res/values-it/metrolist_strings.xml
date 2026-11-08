@@ -964,4 +964,6 @@
     <string name="beat_disliked_songs">Brani che non ti piacciono</string>
     <string name="beat_disliked_count">%d brani nascosti</string>
     <string name="beat_disliked_restore">Ripristina tutti</string>
+    <string name="beat_genre_mixes">Mix per genere</string>
+    <string name="beat_genre_mix_subtitle">I tuoi brani + nuovi</string>
 </resources>
