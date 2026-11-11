@@ -135,7 +135,7 @@ class BeatMixRepository
                 if (!refresh) cached(def.id)?.let { return@withLock it }
                 val built = withContext(Dispatchers.IO) { build(def) }
                 contents[def.id] = built
-                if (refresh || def.id !in covers) {
+                if (refresh || !covers.containsKey(def.id)) {
                     covers[def.id] = coverFromTracks(def, built)
                     _coverVersion.value++
                 }
