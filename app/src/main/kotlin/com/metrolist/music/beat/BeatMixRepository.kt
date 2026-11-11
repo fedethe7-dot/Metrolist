@@ -68,7 +68,7 @@ class BeatMixRepository
 
         private val lineupMutex = Mutex()
         private val tasteMutex = Mutex()
-        private var taste: Taste? = null
+        private var tasteCache: Taste? = null
         private val contents = ConcurrentHashMap<String, BeatMixContent>()
         private val buildLocks = ConcurrentHashMap<String, Mutex>()
 
@@ -126,7 +126,7 @@ class BeatMixRepository
         private suspend fun taste(force: Boolean = false): Taste =
             tasteMutex.withLock {
                 val now = System.currentTimeMillis()
-                taste?.takeIf { !force && now - it.builtAt < TASTE_TTL_MS }?.let { return it }
+                tasteCache?.takeIf { !force && now - it.builtAt < TASTE_TTL_MS }?.let { return it }
                 withContext(Dispatchers.IO) {
                     val today = LocalDateTime.now()
                     val recent = database.mostPlayedArtists(today.minusDays(30), limit = 80).first()
@@ -167,7 +167,7 @@ class BeatMixRepository
                             displayNames = displayNames,
                         )
                     Taste(now, profile, knownPool, forgotten, heavy)
-                }.also { taste = it }
+                }.also { tasteCache = it }
             }
 
         private suspend fun build(def: BeatMixDef): BeatMixContent {
@@ -199,7 +199,7 @@ class BeatMixRepository
                 BeatMixKind.GENRE, BeatMixKind.ORIGINAL, BeatMixKind.OUTSIDE -> {
                     val genreId = genre?.id
                     val genreArtists =
-                        (genre?.artists.orEmpty() + profile.artistGenres.filterValues { genreId in it }.keys).toSet()
+                        (genre?.artists.orEmpty() + profile.artistGenres.filterValues { genreId != null && genreId in it }.keys).toSet()
                     val userArtists = profile.topArtists(200).filter { it in genreArtists }
                     val queries =
                         genre?.seeds.orEmpty().shuffled(random).take(2) +

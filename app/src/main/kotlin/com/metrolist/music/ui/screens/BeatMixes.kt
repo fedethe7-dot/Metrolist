@@ -497,7 +497,7 @@ fun BeatMixLibraryScreen(onBack: () -> Unit) {
     val sections =
         lineup?.let { current ->
             listOf(
-                R.string.beat_mixes_made_for_you to listOfNotNull(current.hero) + current.forYou,
+                R.string.beat_mixes_made_for_you to (listOfNotNull(current.hero) + current.forYou).distinctBy { it.id },
                 R.string.beat_mixes_discover to current.discover,
                 R.string.beat_mixes_artists to current.artistMixes,
                 R.string.beat_mixes_genres to current.genres,

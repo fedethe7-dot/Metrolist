@@ -125,7 +125,7 @@ class BeatCallAudioGuard(
         if (!communicationMode) return false
         // Only the Bluetooth hands-free route degrades the music; a call on the phone speaker does not.
         return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-            audioManager.communicationDevice?.type in HandsFreeTypes
+            audioManager.communicationDevice?.type?.let { it in HandsFreeTypes } == true
         } else {
             @Suppress("DEPRECATION")
             audioManager.isBluetoothScoOn
