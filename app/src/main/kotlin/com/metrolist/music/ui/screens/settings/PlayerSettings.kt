@@ -38,6 +38,7 @@ import com.metrolist.music.LocalPlayerAwareWindowInsets
 import com.metrolist.music.R
 import com.metrolist.music.constants.AudioNormalizationKey
 import com.metrolist.music.constants.AudioOffload
+import com.metrolist.music.constants.BeatPauseOnCallAudioKey
 import com.metrolist.music.constants.AudioTrackPlaybackParamsKey
 import com.metrolist.music.constants.AudioQuality
 import com.metrolist.music.constants.AudioQualityKey
@@ -136,6 +137,11 @@ fun PlayerSettings(
     val (audioOffload, onAudioOffloadChange) = rememberPreference(
         key = AudioOffload,
         defaultValue = false
+    )
+
+    val (pauseOnCallAudio, onPauseOnCallAudioChange) = rememberPreference(
+        key = BeatPauseOnCallAudioKey,
+        defaultValue = true
     )
 
     val (audioTrackPlaybackParams, onAudioTrackPlaybackParamsChange) = rememberPreference(
@@ -472,6 +478,27 @@ fun PlayerSettings(
                         )
                     },
                     onClick = { if (!crossfadeEnabled) onAudioOffloadChange(!audioOffload) }
+                ))
+                add(Material3SettingsItem(
+                    icon = painterResource(R.drawable.bluetooth),
+                    title = { Text(stringResource(R.string.beat_pause_call_audio)) },
+                    description = { Text(stringResource(R.string.beat_pause_call_audio_desc)) },
+                    trailingContent = {
+                        Switch(
+                            checked = pauseOnCallAudio,
+                            onCheckedChange = onPauseOnCallAudioChange,
+                            thumbContent = {
+                                Icon(
+                                    painter = painterResource(
+                                        id = if (pauseOnCallAudio) R.drawable.check else R.drawable.close
+                                    ),
+                                    contentDescription = null,
+                                    modifier = Modifier.size(SwitchDefaults.IconSize)
+                                )
+                            }
+                        )
+                    },
+                    onClick = { onPauseOnCallAudioChange(!pauseOnCallAudio) }
                 ))
                 add(Material3SettingsItem(
                     icon = painterResource(R.drawable.graphic_eq),

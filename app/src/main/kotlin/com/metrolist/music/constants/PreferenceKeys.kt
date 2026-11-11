@@ -723,3 +723,6 @@ val CountryCodeToName =
 
 // Songs the user disliked in Beat: never played again until restored.
 val DislikedSongsKey = stringSetPreferencesKey("dislikedSongs")
+
+// Beat: pause the music while a call or a voice message uses the Bluetooth hands-free link (on by default).
+val BeatPauseOnCallAudioKey = booleanPreferencesKey("beatPauseOnCallAudio")

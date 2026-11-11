@@ -1082,6 +1082,25 @@
     <string name="beat_disliked_songs">Songs you don\'t like</string>
     <string name="beat_disliked_count">%d hidden songs</string>
     <string name="beat_disliked_restore">Restore all</string>
-    <string name="beat_genre_mixes">Mixes by genre</string>
-    <string name="beat_genre_mix_subtitle">Your songs + new ones</string>
+    <string name="beat_mixes_header">Mixes for you</string>
+    <string name="beat_mix_of_the_day">Mix of the day</string>
+    <string name="beat_mixes_made_for_you">Made for you today</string>
+    <string name="beat_mixes_discover">To discover</string>
+    <string name="beat_mixes_mine">My mixes</string>
+    <string name="beat_mixes_artists">Your artists</string>
+    <string name="beat_mixes_genres">Your genres</string>
+    <string name="beat_mixes_more_genres">More genres to explore</string>
+    <string name="beat_mixes_all">All mixes</string>
+    <string name="beat_mixes_change">Change mixes</string>
+    <string name="beat_mix_loading">Preparing your mix…</string>
+    <string name="beat_mix_error">Couldn\'t build this mix. Check the connection and try again.</string>
+    <string name="beat_mix_retry">Try again</string>
+    <string name="beat_mix_play">Play</string>
+    <string name="beat_mix_shuffle">Shuffle</string>
+    <string name="beat_mix_regenerate">New songs</string>
+    <string name="beat_mix_regenerated">New selection ready</string>
+    <string name="beat_mix_info">%1$d songs · %2$d new for you</string>
+    <string name="beat_mix_new_badge">NEW</string>
+    <string name="beat_pause_call_audio">Pause for Bluetooth calls and voice messages</string>
+    <string name="beat_pause_call_audio_desc">In the car, music is paused while a call or a WhatsApp voice message uses the Bluetooth microphone (phone quality), and resumes in full quality right after</string>
 </resources>

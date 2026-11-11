@@ -1250,8 +1250,8 @@ fun HomeScreen(
                 }
 
                 if (!suggestionsOnly && selectedChip == null && beatShowMixes && beatFilter != 1) {
-                    item(key = "beat_genre_mixes") {
-                        BeatGenreMixRow(modifier = Modifier.padding(vertical = 8.dp))
+                    item(key = "beat_mixes") {
+                        BeatMixHomeSection(expanded = beatFilter == 2, modifier = Modifier.padding(vertical = 8.dp))
                     }
                 }
 

@@ -138,6 +138,8 @@ import com.metrolist.music.discord.PresenceStatus
 import com.metrolist.music.constants.EnableLastFMScrobblingKey
 import com.metrolist.music.constants.EnableSongCacheKey
 import com.metrolist.music.constants.DislikedSongsKey
+import com.metrolist.music.constants.BeatPauseOnCallAudioKey
+import com.metrolist.music.beat.BeatMixRepository
 import com.metrolist.music.constants.HideExplicitKey
 import com.metrolist.music.constants.HideVideoSongsKey
 import com.metrolist.music.constants.HistoryDuration
@@ -273,6 +275,9 @@ class MusicService :
     lateinit var database: MusicDatabase
 
     @Inject
+    lateinit var beatMixRepository: BeatMixRepository
+
+    @Inject
     lateinit var lyricsHelper: LyricsHelper
 
     @Inject
@@ -302,6 +307,13 @@ class MusicService :
     private var wasPlayingBeforeAudioFocusLoss = false
     private var hasAudioFocus = false
     private var reentrantFocusGain = false
+
+    // Beat: music paused because a call or voice message took the Bluetooth hands-free link.
+    private var callAudioGuard: BeatCallAudioGuard? = null
+    private var pausedForCallAudio = false
+
+    @Volatile
+    private var pauseOnCallAudio = true
     private var wasPlayingBeforeVolumeMute = false
     private var isPausedByVolumeMute = false
 
@@ -590,13 +602,15 @@ class MusicService :
         object : AudioDeviceCallback() {
             override fun onAudioDevicesAdded(addedDevices: Array<out AudioDeviceInfo>?) {
                 super.onAudioDevicesAdded(addedDevices)
+                // Only a music link counts: the hands-free (SCO) device appears when a call or a WhatsApp
+                // voice message opens the car microphone, and resuming then would play the music in phone quality.
                 val hasBluetooth =
                     addedDevices?.any {
                         it.type == AudioDeviceInfo.TYPE_BLUETOOTH_A2DP ||
-                            it.type == AudioDeviceInfo.TYPE_BLUETOOTH_SCO
+                            (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && it.type == AudioDeviceInfo.TYPE_BLE_HEADSET)
                     } == true
 
-                if (hasBluetooth) {
+                if (hasBluetooth && callAudioGuard?.isActive != true) {
                     if (dataStore.get(ResumeOnBluetoothConnectKey, false)) {
                         if (player.playbackState == Player.STATE_READY && !player.isPlaying) {
                             player.play()
@@ -699,6 +713,7 @@ class MusicService :
 
         audioManager = getSystemService(Context.AUDIO_SERVICE) as AudioManager
         setupAudioFocusRequest()
+        callAudioGuard = BeatCallAudioGuard(this, audioManager, ::onCallAudioChanged).also { it.start() }
 
         mediaLibrarySessionCallback.apply {
             service = this@MusicService
@@ -1179,6 +1194,9 @@ class MusicService :
             dataStore.data.map { it[DislikedSongsKey] ?: emptySet() }.distinctUntilChanged().collect { dislikedSongIds.value = it }
         }
         scope.launch {
+            dataStore.data.map { it[BeatPauseOnCallAudioKey] ?: true }.distinctUntilChanged().collect { pauseOnCallAudio = it }
+        }
+        scope.launch {
             dataStore.data.map { it[HideVideoSongsKey] ?: false }.distinctUntilChanged().collect { cachedHideVideoSongs = it }
         }
         scope.launch {
@@ -1397,11 +1415,19 @@ class MusicService :
                 hasAudioFocus = true
                 audioFocusVolumeMultiplier.value = 1f
 
-                if (wasPlayingBeforeAudioFocusLoss && !player.isPlaying && !reentrantFocusGain) {
+                if (wasPlayingBeforeAudioFocusLoss && !player.isPlaying && isCallAudioBlocking()) {
+                    // The voice message or call is over for the focus, but the car is still on the hands-free
+                    // link: resume when it is back to stereo (see onCallAudioChanged).
+                    pausedForCallAudio = true
+                    wasPlayingBeforeAudioFocusLoss = false
+                } else if (wasPlayingBeforeAudioFocusLoss && !player.isPlaying && !reentrantFocusGain) {
                     reentrantFocusGain = true
                     scope.launch {
                         delay(300)
-                        if (hasAudioFocus && wasPlayingBeforeAudioFocusLoss && !player.isPlaying) {
+                        if (isCallAudioBlocking()) {
+                            pausedForCallAudio = pausedForCallAudio || wasPlayingBeforeAudioFocusLoss
+                            wasPlayingBeforeAudioFocusLoss = false
+                        } else if (hasAudioFocus && wasPlayingBeforeAudioFocusLoss && !player.isPlaying) {
                             if (castConnectionHandler?.isCasting?.value != true) {
                                 player.play()
                             }
@@ -1453,6 +1479,37 @@ class MusicService :
                 lastAudioFocusState = focusChange
             }
         }
+    }
+
+    private fun isCallAudioBlocking(): Boolean =
+        callAudioGuard?.isActive == true && pauseOnCallAudio
+
+    private fun onCallAudioChanged(active: Boolean) {
+        if (!::player.isInitialized) return
+        if (!pauseOnCallAudio) {
+            pausedForCallAudio = false
+            return
+        }
+        if (active) {
+            if (player.isPlaying || wasPlayingBeforeAudioFocusLoss) {
+                Timber.tag(TAG).d("Pausing music: Bluetooth hands-free link in use")
+                pausedForCallAudio = true
+                wasPlayingBeforeAudioFocusLoss = false
+                if (player.isPlaying) player.pause()
+            }
+            return
+        }
+        if (!pausedForCallAudio) return
+        pausedForCallAudio = false
+        if (castConnectionHandler?.isCasting?.value == true || player.isPlaying) return
+        if (!hasAudioFocus && lastAudioFocusState == AudioManager.AUDIOFOCUS_LOSS) return
+        if (!hasAudioFocus && lastAudioFocusState == AudioManager.AUDIOFOCUS_LOSS_TRANSIENT) {
+            // Another app (e.g. WhatsApp playing a voice note) still holds the focus: resume when it gives it back.
+            wasPlayingBeforeAudioFocusLoss = true
+            return
+        }
+        Timber.tag(TAG).d("Resuming music in full quality after the hands-free link")
+        player.play()
     }
 
     private fun requestAudioFocus(): Boolean {
@@ -2855,6 +2912,15 @@ class MusicService :
             currentMediaMetadata.value = player.currentMetadata
         }
 
+        if (events.containsAny(Player.EVENT_IS_PLAYING_CHANGED) && player.isPlaying && isCallAudioBlocking()) {
+            val guard = callAudioGuard
+            if (guard != null && System.currentTimeMillis() - guard.activeSince < CALL_AUDIO_BLOCK_WINDOW_MS) {
+                Timber.tag(TAG).d("Playback started during the hands-free link: holding it until the link ends")
+                pausedForCallAudio = true
+                player.pause()
+            }
+        }
+
         if (events.containsAny(Player.EVENT_IS_PLAYING_CHANGED)) {
             updateWidgetUI(player.isPlaying)
             if (player.isPlaying) {
@@ -4132,6 +4198,17 @@ class MusicService :
         val mediaItem = eventTime.timeline.getWindow(eventTime.windowIndex, Timeline.Window()).mediaItem
         val historyDurationMs = dataStore[HistoryDuration]?.times(1000f) ?: 30000f
 
+        // Beat mixes learn from what is skipped quickly and from what is listened to.
+        mediaItem.metadata?.let { metadata ->
+            val artists = metadata.artists.map { it.name }
+            val playedMs = playbackStats.totalPlayTimeMs
+            if (playedMs in 1 until BEAT_SKIP_THRESHOLD_MS && metadata.duration > 60 && !pausedForCallAudio) {
+                scope.launch(Dispatchers.IO) { beatMixRepository.memory.recordSkip(mediaItem.mediaId, artists) }
+            } else if (playedMs >= historyDurationMs) {
+                scope.launch(Dispatchers.IO) { beatMixRepository.memory.recordListened(mediaItem.mediaId, artists) }
+            }
+        }
+
         if (playbackStats.totalPlayTimeMs >= historyDurationMs &&
             !dataStore.get(PauseListenHistoryKey, false)
         ) {
@@ -4361,6 +4438,7 @@ class MusicService :
         } catch (e: Exception) {
         }
         audioManager.unregisterAudioDeviceCallback(audioDeviceCallback)
+        callAudioGuard?.stop()
         castConnectionHandler?.release()
         if (dataStore.get(PersistentQueueKey, true)) {
             saveQueueToDisk()
@@ -5118,6 +5196,13 @@ class MusicService :
         const val YOUTUBE_PLAYLIST = "youtube_playlist"
         const val SEARCH = "search"
         const val SHUFFLE_ACTION = "__shuffle__"
+
+        // Under this much listening a song counts as skipped for the Beat mixes.
+        const val BEAT_SKIP_THRESHOLD_MS = 25_000L
+
+        // A playback started while the hands-free link is up is held back only this long after the link started,
+        // so a link stuck on by another app can never block the music for good.
+        const val CALL_AUDIO_BLOCK_WINDOW_MS = 15 * 60 * 1000L
 
         const val CHANNEL_ID = "music_channel_01"
         const val NOTIFICATION_ID = 888

@@ -964,6 +964,25 @@
     <string name="beat_disliked_songs">Brani che non ti piacciono</string>
     <string name="beat_disliked_count">%d brani nascosti</string>
     <string name="beat_disliked_restore">Ripristina tutti</string>
-    <string name="beat_genre_mixes">Mix per genere</string>
-    <string name="beat_genre_mix_subtitle">I tuoi brani + nuovi</string>
+    <string name="beat_mixes_header">Mix per te</string>
+    <string name="beat_mix_of_the_day">Mix del giorno</string>
+    <string name="beat_mixes_made_for_you">Creati per te oggi</string>
+    <string name="beat_mixes_discover">Da scoprire</string>
+    <string name="beat_mixes_mine">I miei mix</string>
+    <string name="beat_mixes_artists">I tuoi artisti</string>
+    <string name="beat_mixes_genres">I tuoi generi</string>
+    <string name="beat_mixes_more_genres">Altri generi da esplorare</string>
+    <string name="beat_mixes_all">Tutti i mix</string>
+    <string name="beat_mixes_change">Cambia i mix</string>
+    <string name="beat_mix_loading">Sto preparando il mix…</string>
+    <string name="beat_mix_error">Non sono riuscito a creare il mix. Controlla la connessione e riprova.</string>
+    <string name="beat_mix_retry">Riprova</string>
+    <string name="beat_mix_play">Riproduci</string>
+    <string name="beat_mix_shuffle">Casuale</string>
+    <string name="beat_mix_regenerate">Nuovi brani</string>
+    <string name="beat_mix_regenerated">Nuova selezione pronta</string>
+    <string name="beat_mix_info">%1$d brani · %2$d nuovi per te</string>
+    <string name="beat_mix_new_badge">NUOVO</string>
+    <string name="beat_pause_call_audio">Pausa per chiamate e vocali in Bluetooth</string>
+    <string name="beat_pause_call_audio_desc">In auto la musica si ferma mentre una chiamata o un vocale WhatsApp usa il microfono Bluetooth (qualità telefono) e riparte in alta qualità subito dopo</string>
 </resources>

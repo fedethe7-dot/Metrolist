@@ -85,6 +85,17 @@ fun NavGraphBuilder.navigationBuilder(
         BeatAppearanceScreen(onBack = { navController.navigateUp() })
     }
 
+    composable(BEAT_MIXES_ROUTE) {
+        BeatMixLibraryScreen(onBack = { navController.navigateUp() })
+    }
+
+    composable(
+        route = BEAT_MIX_ROUTE,
+        arguments = listOf(navArgument("mixId") { type = NavType.StringType }),
+    ) {
+        BeatMixScreen(onBack = { navController.navigateUp() })
+    }
+
     composable(Screens.Search.route) { backStackEntry ->
         val pureBlackEnabled by rememberPreference(PureBlackKey, defaultValue = false)
         val darkTheme by rememberEnumPreference(DarkModeKey, defaultValue = DarkMode.AUTO)
