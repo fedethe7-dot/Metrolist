@@ -1103,4 +1103,5 @@
     <string name="beat_mix_new_badge">NEW</string>
     <string name="beat_pause_call_audio">Pause for Bluetooth calls and voice messages</string>
     <string name="beat_pause_call_audio_desc">In the car, music is paused while a call or a WhatsApp voice message uses the Bluetooth microphone (phone quality), and resumes in full quality right after</string>
+    <string name="beat_mix_with_artists">With %1$s and more</string>
 </resources>

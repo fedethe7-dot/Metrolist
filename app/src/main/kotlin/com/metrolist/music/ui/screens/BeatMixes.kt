@@ -8,6 +8,14 @@ package com.metrolist.music.ui.screens
 import android.net.Uri
 import android.widget.Toast
 import androidx.compose.foundation.background
+import coil3.compose.AsyncImage
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.graphics.luminance
+import androidx.compose.ui.draw.shadow
+import androidx.compose.runtime.produceState
+import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -142,7 +150,7 @@ class BeatMixViewModel
     @Inject
     constructor(
         savedStateHandle: SavedStateHandle,
-        private val repository: BeatMixRepository,
+        val repository: BeatMixRepository,
     ) : ViewModel() {
         private val mixId: String = savedStateHandle.get<String>("mixId").orEmpty()
 
@@ -302,26 +310,129 @@ fun BeatMixHomeSection(
         current.hero?.let { hero ->
             BeatMixHeroCard(
                 def = hero,
+                pictures = rememberMixCover(hero, viewModel.repository),
                 loading = loadingId == hero.id,
                 onOpen = { open(hero) },
                 onPlay = { play(hero) },
                 modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
             )
         }
-        BeatMixRow(stringResource(R.string.beat_mixes_made_for_you), current.forYou, loadingId, open, play)
-        BeatMixRow(stringResource(R.string.beat_mixes_discover), current.discover, loadingId, open, play)
+        BeatMixRow(stringResource(R.string.beat_mixes_made_for_you), current.forYou, viewModel.repository, loadingId, open, play)
+        BeatMixRow(stringResource(R.string.beat_mixes_discover), current.discover, viewModel.repository, loadingId, open, play)
         if (expanded) {
-            BeatMixRow(stringResource(R.string.beat_mixes_artists), current.artistMixes, loadingId, open, play)
-            BeatMixRow(stringResource(R.string.beat_mixes_genres), current.genres, loadingId, open, play)
+            BeatMixRow(stringResource(R.string.beat_mixes_artists), current.artistMixes, viewModel.repository, loadingId, open, play)
+            BeatMixRow(stringResource(R.string.beat_mixes_genres), current.genres, viewModel.repository, loadingId, open, play)
         }
-        BeatMixRow(stringResource(R.string.beat_mixes_mine), current.originals, loadingId, open, play, cardSize = 112.dp)
+        BeatMixRow(stringResource(R.string.beat_mixes_mine), current.originals, viewModel.repository, loadingId, open, play, cardSize = 112.dp)
     }
+}
+
+/** Cover pictures of a mix, loaded in the background and renewed when the repository changes them. */
+@Composable
+private fun rememberMixCover(
+    def: BeatMixDef,
+    repository: BeatMixRepository,
+): List<String> {
+    val version by repository.coverVersion.collectAsStateWithLifecycle()
+    val pictures by produceState(repository.cachedCover(def.id).orEmpty(), def.id, version) {
+        value = repository.cover(def)
+    }
+    return pictures
+}
+
+private val ArtistCoverKinds = setOf(BeatMixKind.DAILY, BeatMixKind.ARTIST, BeatMixKind.SIMILAR)
+
+/**
+ * Spotify-style cover: artist photos in circles for artist mixes, a big album cover for the others,
+ * on the mix colours, with the title on a coloured band at the bottom.
+ */
+@Composable
+fun BeatMixCover(
+    def: BeatMixDef,
+    pictures: List<String>,
+    modifier: Modifier = Modifier,
+) {
+    BoxWithConstraints(modifier = modifier.background(def.brush())) {
+        val side = maxWidth
+        val band = maxHeight * 0.3f
+        val bandColor = Color(def.colors.first)
+        val textColor = if (bandColor.luminance() > 0.5f) Color.Black else Color.White
+        val artArea = Modifier.align(Alignment.TopCenter).fillMaxWidth().height(maxHeight - band)
+        if (pictures.isEmpty()) {
+            Icon(
+                painter = painterResource(R.drawable.queue_music),
+                contentDescription = null,
+                tint = Color.White.copy(alpha = 0.6f),
+                modifier = artArea.padding(side * 0.18f),
+            )
+        } else if (def.kind in ArtistCoverKinds) {
+            Box(contentAlignment = Alignment.Center, modifier = artArea.padding(top = side * 0.04f)) {
+                val small = side * 0.34f
+                pictures.getOrNull(1)?.let { CoverCircle(it, small, Modifier.offset(x = -side * 0.27f)) }
+                pictures.getOrNull(2)?.let { CoverCircle(it, small, Modifier.offset(x = side * 0.27f)) }
+                CoverCircle(pictures[0], side * 0.46f)
+            }
+        } else {
+            Box(contentAlignment = Alignment.Center, modifier = artArea.padding(top = side * 0.05f)) {
+                AsyncImage(
+                    model = pictures[0],
+                    contentDescription = null,
+                    contentScale = ContentScale.Crop,
+                    modifier =
+                        Modifier
+                            .size(side * 0.6f)
+                            .shadow(8.dp, RoundedCornerShape(4.dp))
+                            .clip(RoundedCornerShape(4.dp)),
+                )
+            }
+        }
+        Box(
+            contentAlignment = Alignment.CenterStart,
+            modifier =
+                Modifier
+                    .align(Alignment.BottomStart)
+                    .fillMaxWidth()
+                    .height(band)
+                    .background(bandColor)
+                    .padding(horizontal = side * 0.07f),
+        ) {
+            Text(
+                text = def.title,
+                color = textColor,
+                fontSize = (side.value * 0.095f).sp,
+                lineHeight = (side.value * 0.105f).sp,
+                fontWeight = FontWeight.ExtraBold,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
+    }
+}
+
+@Composable
+private fun CoverCircle(
+    url: String,
+    size: Dp,
+    modifier: Modifier = Modifier,
+) {
+    AsyncImage(
+        model = url,
+        contentDescription = null,
+        contentScale = ContentScale.Crop,
+        modifier =
+            modifier
+                .size(size)
+                .shadow(6.dp, CircleShape)
+                .clip(CircleShape)
+                .background(Color.Black.copy(alpha = 0.2f)),
+    )
 }
 
 @Composable
 private fun BeatMixRow(
     title: String,
     mixes: List<BeatMixDef>,
+    repository: BeatMixRepository,
     loadingId: String?,
     onOpen: (BeatMixDef) -> Unit,
     onPlay: (BeatMixDef) -> Unit,
@@ -342,66 +453,53 @@ private fun BeatMixRow(
         items(mixes, key = { it.id }) { mix ->
             BeatMixCard(
                 def = mix,
-                size = cardSize,
+                pictures = rememberMixCover(mix, repository),
                 loading = loadingId == mix.id,
                 onOpen = { onOpen(mix) },
                 onPlay = { onPlay(mix) },
+                modifier = Modifier.width(cardSize),
             )
         }
     }
 }
 
+/** A mix card: square cover with a quick play button, and the description under it. */
 @Composable
 private fun BeatMixCard(
     def: BeatMixDef,
-    size: Dp,
+    pictures: List<String>,
     loading: Boolean,
     onOpen: () -> Unit,
     onPlay: () -> Unit,
     modifier: Modifier = Modifier,
+    showSubtitle: Boolean = true,
 ) {
-    val small = size < 130.dp
-    Box(
-        modifier =
-            modifier
-                .size(size)
-                .clip(LocalBeatLook.current.cardShape(14.dp))
-                .background(def.brush())
-                .clickable(onClick = onOpen)
-                .padding(if (small) 10.dp else 12.dp),
-    ) {
-        if (!small) {
-            Text(
-                text = kindLabel(def.kind).uppercase(),
-                color = Color.White.copy(alpha = 0.85f),
-                fontSize = 10.sp,
-                fontWeight = FontWeight.Bold,
-                letterSpacing = 1.sp,
-                maxLines = 1,
-                modifier = Modifier.align(Alignment.TopStart).padding(end = 36.dp),
+    Column(modifier = modifier.clickable(onClick = onOpen)) {
+        Box(
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .aspectRatio(1f)
+                    .clip(LocalBeatLook.current.cardShape(10.dp)),
+        ) {
+            BeatMixCover(def, pictures, Modifier.fillMaxSize())
+            BeatMixPlayButton(
+                loading = loading,
+                onClick = onPlay,
+                modifier = Modifier.align(Alignment.TopEnd).padding(6.dp),
+                size = 30.dp,
             )
         }
-        BeatMixPlayButton(loading = loading, onClick = onPlay, modifier = Modifier.align(Alignment.TopEnd), size = if (small) 30.dp else 34.dp)
-        Column(modifier = Modifier.align(Alignment.BottomStart)) {
+        if (showSubtitle) {
             Text(
-                text = def.title,
-                color = Color.White,
-                fontSize = if (small) 15.sp else 17.sp,
-                fontWeight = FontWeight.Bold,
-                lineHeight = if (small) 17.sp else 19.sp,
+                text = def.subtitle,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                fontSize = 12.sp,
+                lineHeight = 14.sp,
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.padding(top = 6.dp, end = 2.dp),
             )
-            if (!small) {
-                Text(
-                    text = def.subtitle,
-                    color = Color.White.copy(alpha = 0.85f),
-                    fontSize = 12.sp,
-                    lineHeight = 14.sp,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis,
-                )
-            }
         }
     }
 }
@@ -419,7 +517,7 @@ private fun BeatMixPlayButton(
             modifier
                 .size(size)
                 .clip(CircleShape)
-                .background(Color.Black.copy(alpha = 0.28f))
+                .background(Color.Black.copy(alpha = 0.35f))
                 .clickable(enabled = !loading, onClick = onClick),
     ) {
         if (loading) {
@@ -435,52 +533,68 @@ private fun BeatMixPlayButton(
     }
 }
 
+/** "Mix del giorno": cover on the left, text and a big play button on the right. */
 @Composable
 private fun BeatMixHeroCard(
     def: BeatMixDef,
+    pictures: List<String>,
     loading: Boolean,
     onOpen: () -> Unit,
     onPlay: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    Box(
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
         modifier =
             modifier
                 .fillMaxWidth()
-                .height(168.dp)
                 .clip(LocalBeatLook.current.cardShape(18.dp))
-                .background(def.brush())
-                .clickable(onClick = onOpen)
-                .padding(16.dp),
+                .background(
+                    Brush.linearGradient(
+                        listOf(Color(def.colors.first).copy(alpha = 0.55f), Color(def.colors.second).copy(alpha = 0.35f)),
+                    ),
+                ).clickable(onClick = onOpen)
+                .padding(12.dp),
     ) {
-        Column(modifier = Modifier.align(Alignment.TopStart).padding(end = 56.dp)) {
+        BeatMixCover(
+            def = def,
+            pictures = pictures,
+            modifier =
+                Modifier
+                    .size(132.dp)
+                    .clip(RoundedCornerShape(10.dp)),
+        )
+        Spacer(Modifier.width(14.dp))
+        Column(modifier = Modifier.weight(1f)) {
             Text(
                 text = stringResource(R.string.beat_mix_of_the_day).uppercase(),
-                color = Color.White.copy(alpha = 0.9f),
+                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f),
                 fontSize = 11.sp,
                 fontWeight = FontWeight.Bold,
                 letterSpacing = 1.5.sp,
             )
-            Spacer(Modifier.height(6.dp))
+            Spacer(Modifier.height(4.dp))
             Text(
                 text = def.title,
-                color = Color.White,
-                fontSize = 26.sp,
+                color = MaterialTheme.colorScheme.onSurface,
+                fontSize = 22.sp,
                 fontWeight = FontWeight.ExtraBold,
-                lineHeight = 28.sp,
+                lineHeight = 24.sp,
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis,
             )
+            Spacer(Modifier.height(4.dp))
+            Text(
+                text = def.subtitle,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                fontSize = 12.sp,
+                lineHeight = 14.sp,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
+            )
+            Spacer(Modifier.height(8.dp))
+            BeatMixPlayButton(loading = loading, onClick = onPlay, size = 44.dp)
         }
-        Text(
-            text = def.subtitle,
-            color = Color.White.copy(alpha = 0.9f),
-            fontSize = 13.sp,
-            maxLines = 2,
-            overflow = TextOverflow.Ellipsis,
-            modifier = Modifier.align(Alignment.BottomStart).padding(end = 64.dp),
-        )
-        BeatMixPlayButton(loading = loading, onClick = onPlay, modifier = Modifier.align(Alignment.BottomEnd), size = 52.dp)
     }
 }
 
@@ -558,61 +672,18 @@ fun BeatMixLibraryScreen(onBack: () -> Unit) {
                 ) {
                     row.forEach { mix ->
                         Box(Modifier.weight(1f)) {
-                            BeatMixWideCard(mix, loadingId == mix.id, onOpen = { open(mix) }, onPlay = { play(mix) })
+                            BeatMixCard(
+                                def = mix,
+                                pictures = rememberMixCover(mix, viewModel.repository),
+                                loading = loadingId == mix.id,
+                                onOpen = { open(mix) },
+                                onPlay = { play(mix) },
+                            )
                         }
                     }
                     if (row.size == 1) Spacer(Modifier.weight(1f))
                 }
             }
-        }
-    }
-}
-
-@Composable
-private fun BeatMixWideCard(
-    def: BeatMixDef,
-    loading: Boolean,
-    onOpen: () -> Unit,
-    onPlay: () -> Unit,
-) {
-    Box(
-        modifier =
-            Modifier
-                .fillMaxWidth()
-                .height(120.dp)
-                .clip(LocalBeatLook.current.cardShape(14.dp))
-                .background(def.brush())
-                .clickable(onClick = onOpen)
-                .padding(12.dp),
-    ) {
-        Text(
-            text = kindLabel(def.kind).uppercase(),
-            color = Color.White.copy(alpha = 0.85f),
-            fontSize = 10.sp,
-            fontWeight = FontWeight.Bold,
-            letterSpacing = 1.sp,
-            maxLines = 1,
-            modifier = Modifier.align(Alignment.TopStart).padding(end = 36.dp),
-        )
-        BeatMixPlayButton(loading = loading, onClick = onPlay, modifier = Modifier.align(Alignment.TopEnd), size = 32.dp)
-        Column(modifier = Modifier.align(Alignment.BottomStart)) {
-            Text(
-                text = def.title,
-                color = Color.White,
-                fontSize = 16.sp,
-                fontWeight = FontWeight.Bold,
-                lineHeight = 18.sp,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis,
-            )
-            Text(
-                text = def.subtitle,
-                color = Color.White.copy(alpha = 0.85f),
-                fontSize = 11.sp,
-                lineHeight = 13.sp,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
         }
     }
 }
@@ -654,40 +725,46 @@ fun BeatMixScreen(onBack: () -> Unit) {
                     }
                 }
                 if (def != null) {
-                    Box(
-                        modifier =
-                            Modifier
-                                .padding(horizontal = 16.dp)
-                                .fillMaxWidth()
-                                .height(190.dp)
-                                .clip(LocalBeatLook.current.cardShape(20.dp))
-                                .background(def.brush())
-                                .padding(18.dp),
-                    ) {
-                        Text(
-                            text = kindLabel(def.kind).uppercase(),
-                            color = Color.White.copy(alpha = 0.9f),
-                            fontSize = 11.sp,
-                            fontWeight = FontWeight.Bold,
-                            letterSpacing = 1.5.sp,
-                            modifier = Modifier.align(Alignment.TopStart),
-                        )
-                        Text(
-                            text = def.title,
-                            color = Color.White,
-                            fontSize = 30.sp,
-                            fontWeight = FontWeight.ExtraBold,
-                            lineHeight = 32.sp,
-                            maxLines = 3,
-                            overflow = TextOverflow.Ellipsis,
-                            modifier = Modifier.align(Alignment.BottomStart),
+                    val pictures = rememberMixCover(def, viewModel.repository)
+                    Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp)) {
+                        BeatMixCover(
+                            def = def,
+                            pictures = pictures,
+                            modifier =
+                                Modifier
+                                    .size(230.dp)
+                                    .shadow(16.dp, RoundedCornerShape(8.dp))
+                                    .clip(RoundedCornerShape(8.dp)),
                         )
                     }
                     Text(
-                        text = def.subtitle,
+                        text = kindLabel(def.kind).uppercase(),
+                        color = MaterialTheme.colorScheme.primary,
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Bold,
+                        letterSpacing = 1.5.sp,
+                        modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 12.dp),
+                    )
+                    Text(
+                        text = def.title,
+                        style = MaterialTheme.typography.headlineSmall,
+                        fontWeight = FontWeight.ExtraBold,
+                        modifier = Modifier.padding(horizontal = 16.dp),
+                    )
+                    val withArtists =
+                        content?.tracks
+                            ?.mapNotNull { it.metadata.artists.firstOrNull()?.name }
+                            ?.distinct()
+                            ?.take(3)
+                            ?.takeIf { it.isNotEmpty() }
+                            ?.let { stringResource(R.string.beat_mix_with_artists, it.joinToString(", ")) }
+                    Text(
+                        text = withArtists ?: def.subtitle,
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 12.dp),
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 4.dp),
                     )
                 }
                 if (content != null) {

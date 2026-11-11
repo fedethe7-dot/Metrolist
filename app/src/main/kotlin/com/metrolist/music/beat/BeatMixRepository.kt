@@ -25,6 +25,9 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.Semaphore
+import kotlinx.coroutines.sync.withPermit
+import com.metrolist.music.ui.utils.resize
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import timber.log.Timber
@@ -71,6 +74,13 @@ class BeatMixRepository
         private var tasteCache: Taste? = null
         private val contents = ConcurrentHashMap<String, BeatMixContent>()
         private val buildLocks = ConcurrentHashMap<String, Mutex>()
+        private val covers = ConcurrentHashMap<String, List<String>>()
+        private val coverSearches = Semaphore(3)
+
+        private val _coverVersion = MutableStateFlow(0)
+
+        /** Changes every time covers are renewed, so cards on screen reload them. */
+        val coverVersion: StateFlow<Int> = _coverVersion.asStateFlow()
 
         private class Taste(
             val builtAt: Long,
@@ -79,6 +89,8 @@ class BeatMixRepository
             val knownPool: List<Song>,
             val forgotten: List<Song>,
             val heavyRotation: Set<String>,
+            /** Normalized artist name to photo. */
+            val artistPhotos: Map<String, String>,
         )
 
         /** Makes sure today's mixes are planned. [rotate] asks for a different selection ("Cambia i mix"). */
@@ -96,6 +108,10 @@ class BeatMixRepository
                         rotation = rotation,
                         hasRediscover = taste.forgotten.size >= 5 || taste.knownPool.size >= 60,
                     )
+                if (rotate || current?.day != day) {
+                    covers.clear()
+                    _coverVersion.value++
+                }
                 _lineup.value = planned
                 planned
             }
@@ -119,6 +135,10 @@ class BeatMixRepository
                 if (!refresh) cached(def.id)?.let { return@withLock it }
                 val built = withContext(Dispatchers.IO) { build(def) }
                 contents[def.id] = built
+                if (refresh || def.id !in covers) {
+                    covers[def.id] = coverFromTracks(def, built)
+                    _coverVersion.value++
+                }
                 built
             }
         }
@@ -166,7 +186,14 @@ class BeatMixRepository
                             learnedGenres = memory.learnedGenres(),
                             displayNames = displayNames,
                         )
-                    Taste(now, profile, knownPool, forgotten, heavy)
+                    val artistPhotos = HashMap<String, String>()
+                    (year + recent).forEach { artist ->
+                        artist.artist.thumbnailUrl?.let { artistPhotos[normalizeArtist(artist.artist.name)] = it }
+                    }
+                    knownPool.flatMap { it.artists }.forEach { artist ->
+                        artist.thumbnailUrl?.let { artistPhotos.putIfAbsent(normalizeArtist(artist.name), it) }
+                    }
+                    Taste(now, profile, knownPool, forgotten, heavy, artistPhotos)
                 }.also { tasteCache = it }
             }
 
@@ -336,6 +363,80 @@ class BeatMixRepository
             )
         }
 
+        /** Cover pictures already chosen for a mix, if any. */
+        fun cachedCover(id: String): List<String>? = covers[id]
+
+        /**
+         * Up to three pictures for the cover of a mix: artist photos for artist mixes, album covers for the others.
+         * They are drawn at random and renewed every day, with "Cambia i mix" and when the songs are renewed.
+         */
+        suspend fun cover(def: BeatMixDef): List<String> {
+            covers[def.id]?.let { return it }
+            val pictures = runCatching { withContext(Dispatchers.IO) { computeCover(def) } }.getOrDefault(emptyList())
+            if (pictures.isNotEmpty()) covers[def.id] = pictures
+            return pictures
+        }
+
+        private fun coverFromTracks(
+            def: BeatMixDef,
+            content: BeatMixContent,
+        ): List<String> {
+            val random = Random(System.nanoTime())
+            val albums =
+                content.tracks
+                    .shuffled(random)
+                    .distinctBy { it.metadata.artists.firstOrNull()?.name }
+                    .mapNotNull { it.metadata.thumbnailUrl }
+            val photos =
+                if (def.kind in ArtistKinds) {
+                    val taste = tasteCache
+                    def.artists.mapNotNull { taste?.artistPhotos?.get(normalizeArtist(it)) }.shuffled(random) +
+                        content.tracks.flatMap { it.metadata.artists }
+                            .mapNotNull { taste?.artistPhotos?.get(normalizeArtist(it.name)) }
+                            .shuffled(random)
+                } else {
+                    emptyList()
+                }
+            return (photos + albums).distinct().take(3).map { it.resize(544, 544) }
+        }
+
+        private suspend fun computeCover(def: BeatMixDef): List<String> {
+            cached(def.id)?.let { content -> return coverFromTracks(def, content) }
+            val taste = taste()
+            val random = Random(System.nanoTime())
+
+            fun albumsOf(songs: List<Song>) =
+                songs.shuffled(random).distinctBy { it.artists.firstOrNull()?.name }.mapNotNull { it.song.thumbnailUrl }
+
+            fun songsBy(artists: Set<String>) =
+                taste.knownPool.filter { song -> song.artists.any { normalizeArtist(it.name) in artists } }
+
+            val genre = BeatMixCatalog.genre(def.genreId)
+            val pictures =
+                when (def.kind) {
+                    BeatMixKind.DAILY, BeatMixKind.ARTIST -> {
+                        val artists = def.artists.map(::normalizeArtist)
+                        artists.shuffled(random).mapNotNull { taste.artistPhotos[it] } + albumsOf(songsBy(artists.toSet()))
+                    }
+                    BeatMixKind.SIMILAR -> {
+                        val artist = normalizeArtist(def.artists.firstOrNull().orEmpty())
+                        listOfNotNull(taste.artistPhotos[artist]) + searchPictures(def.artists.firstOrNull().orEmpty())
+                    }
+                    BeatMixKind.GENRE, BeatMixKind.ORIGINAL, BeatMixKind.OUTSIDE -> {
+                        val genreArtists = genre?.artists.orEmpty() + taste.profile.artistGenres.filterValues { genres -> genres.any { it == def.genreId } }.keys
+                        val local = albumsOf(songsBy(genreArtists))
+                        // Genres never listened to have no local pictures: one search gives typical covers.
+                        if (local.size >= 3) local else local + searchPictures(genre?.seeds?.randomOrNull(random) ?: def.title)
+                    }
+                    BeatMixKind.DISCOVER -> albumsOf(taste.knownPool.take(120))
+                    BeatMixKind.REDISCOVER -> albumsOf(taste.forgotten.ifEmpty { taste.knownPool })
+                }
+            return pictures.distinct().take(3).map { it.resize(544, 544) }
+        }
+
+        private suspend fun searchPictures(query: String): List<String> =
+            if (query.isBlank()) emptyList() else coverSearches.withPermit { search(query, 6).map { it.thumbnail } }
+
         private sealed interface Seed {
             data class Query(val text: String) : Seed
 
@@ -385,6 +486,7 @@ class BeatMixRepository
         private companion object {
             const val CONTENT_TTL_MS = 6L * 60 * 60 * 1000
             const val TASTE_TTL_MS = 20L * 60 * 1000
+            val ArtistKinds = setOf(BeatMixKind.DAILY, BeatMixKind.ARTIST, BeatMixKind.SIMILAR)
             val GenreKinds = setOf(BeatMixKind.GENRE, BeatMixKind.ORIGINAL, BeatMixKind.OUTSIDE, BeatMixKind.DAILY)
         }
     }

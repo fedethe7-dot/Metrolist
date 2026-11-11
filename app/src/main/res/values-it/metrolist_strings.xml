@@ -985,4 +985,5 @@
     <string name="beat_mix_new_badge">NUOVO</string>
     <string name="beat_pause_call_audio">Pausa per chiamate e vocali in Bluetooth</string>
     <string name="beat_pause_call_audio_desc">In auto la musica si ferma mentre una chiamata o un vocale WhatsApp usa il microfono Bluetooth (qualità telefono) e riparte in alta qualità subito dopo</string>
+    <string name="beat_mix_with_artists">Con %1$s e altri</string>
 </resources>
