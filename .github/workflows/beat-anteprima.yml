@@ -5,7 +5,7 @@ name: Beat Anteprima
 on:
   workflow_dispatch:
   push:
-    branches: ["beat-anteprima", "ccr-5ab443c0-0xcjg1"]
+    branches: ["beat-anteprima"]
     paths-ignore:
       - "**.md"
       - "fastlane/**"
